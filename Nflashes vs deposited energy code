@@ -1,0 +1,70 @@
+void histograms()
+
+{
+
+TFile *f = new TFile("ana_hist_30GeV_sim.root", "read");
+TDirectoryFile *fd = (TDirectoryFile*)f->Get("vdflashmatch"); //I call the directory and then extract from it analysistree
+fd->cd(); //move to analysis tree
+TTree *t1 = (TTree*)gDirectory->Get("FlashMatchTree");
+TTree *t3 = (TTree*)gDirectory->Get("LargestFlashTree"); //could use (TTree*)fd because now I'm inside the analysistree
+
+//int nevents1 = t1->GetEntries();
+//int nevents2 = t2->GetEntries();
+int nevents3 = t3->GetEntries();
+Int_t tEvent1 = 0;
+Int_t tEvent3 = 0;
+vector<Float_t> *TotalPEsVec = nullptr;
+Float_t TotalPEsLarge;
+Float_t recox;
+Float_t sumPEs;
+Float_t fracPEs;
+Int_t nflashes;
+Float_t simdepE;
+Float_t edep;
+
+t3 -> SetBranchAddress("EventID", &tEvent3);
+t3 -> SetBranchAddress("TotalPE", &TotalPEsLarge); //amount of PEs in the largest flash
+t3 -> SetBranchAddress("RecoX", &recox);
+t3 -> SetBranchAddress("NFlashes", &nflashes);
+t3 -> SetBranchAddress("EdepSimE", &simdepE); //deposited simulated energy
+t3 -> SetBranchAddress("Edep", &edep); 
+t1 -> SetBranchAddress("EventID", &tEvent1);
+t1 -> SetBranchAddress("TotalPEVector", &TotalPEsVec); //the sum of this is the amount of PEs in all the flashes
+
+TH2F* hist2D = new TH2F("hist", "xs", 30, -10, 10, 500, 0, 0);
+
+//Int_t totalID = 50;
+Int_t j1 = 0;
+for (int i=0; i<nevents3; i++)
+	{
+	
+	t3 -> GetEntry(i);
+	t1 -> GetEntry(j1);
+	if(tEvent1 != tEvent3){
+	   while(tEvent1 != tEvent3){
+	   	j1++;
+	   	t1->GetEntry(j1); //this is because the amount of entries on both trees was different (ask Franciole about this), so I had to skip until they matched
+	   }
+	}
+	if(tEvent1 != tEvent3){
+	   cout << "____________________________________" << endl;
+	   cout << "WARNING !!!!!!! " << i << " " << tEvent1 << " " << tEvent3 << endl;
+	   cout << "____________________________________" << endl;
+	}
+	
+	hist2D -> Fill(nflashes,simdepE);
+	  
+	}
+cout << sumPEs << endl;
+hist2D->GetXaxis()->SetTitle("# Flashes");
+hist2D->GetYaxis()->SetTitle("Deposited energy");
+hist2D->SetTitle("Deposited energy vs # flashes");
+hist2D->Draw("COLZ");
+	
+	
+
+
+
+
+
+}
