@@ -3,6 +3,7 @@ void histograms()
 {
 
 TFile *f = new TFile("ana_hist_30GeV_sim.root", "read");
+//TDirectoryFile *fd = (TDirectoryFile*)f->Get("oldvdflashmatch");
 TDirectoryFile *fd = (TDirectoryFile*)f->Get("vdflashmatch"); //I call the directory and then extract from it analysistree
 fd->cd(); //move to analysis tree
 TTree *t1 = (TTree*)gDirectory->Get("FlashMatchTree");
