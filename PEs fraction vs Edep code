@@ -68,3 +68,5 @@ hist2D->GetXaxis()->SetTitle("Deposited energy");
 hist2D->GetYaxis()->SetTitle("Fraction of PEs per flash");
 hist2D->SetTitle("Fraction of PEs per flash vs deposited energy");
 hist2D->Draw("COLZ");
+
+}
