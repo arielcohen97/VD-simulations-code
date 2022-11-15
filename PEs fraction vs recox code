@@ -57,9 +57,9 @@ for (int i=0; i<nevents3; i++)
 	}
 	
 	fracPEs = TotalPEsLarge/sumPEs; //I divide the #PEs from the largest flash by the total amount corresponding to all flashes, for each event
-	if (fracPEs != 1){
-		hist2D -> Fill(recox,fracPEs);
-	  }
+	//if (fracPEs != 1){
+	hist2D -> Fill(recox,fracPEs);
+	//  }
 	}
 cout << sumPEs << endl;
 hist2D->GetXaxis()->SetTitle("Reconstructed x");
