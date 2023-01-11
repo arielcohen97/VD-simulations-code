@@ -30,17 +30,18 @@ vector<TString> list_files(string folder){
 
 
 void for_ariel(){
-        const char* folder = "/home/acohen/Documents/ejercicios_root/VD_simulations/august_run_energy/hist_all_energ_norm/hist_all_energies_redo";
+        const char* folder = "/home/acohen/Documents/ejercicios_root/VD_simulations/august_run_energy/hist_all_energ_norm/";
         const char* dirname = "vdflashmatch";
         const char* tree_name = "FlashMatchTree";
 
         vector<TString> filenames = list_files(folder);
+//        std::sort(filenames.begin(), filenames.end());
 
         uint counter = 0;
         vector<TH1F*> hists;
         vector<Color_t> color = {kRed, kBlack, kGreen, kMagenta, kCyan};
-//        vector<Int_t> color = {30, 31, 32, 34, 35};
-        vector<TString> legend = {"5-10 MeV", "11-15 MeV", "16-20 MeV", "21-25 MeV", "26-30 MeV"};
+//        vector<Int_t> color = {30, 31, 32, 34} //, 35};
+        vector<TString> legend = {"16-20 MeV", "26-30 MeV", "5-10 MeV", "21-25 MeV", "11-15 MeV"}; //"16-20 MeV", "21-25 MeV", "26-30 MeV"};
         Int_t aux = 0;
 
         //Loading data in hists
