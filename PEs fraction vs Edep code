@@ -2,9 +2,9 @@ void histograms()
 
 {
 
-TFile *f = new TFile("ana_hist_30GeV_sim.root", "read");
-//TDirectoryFile *fd = (TDirectoryFile*)f->Get("oldvdflashmatch");
-TDirectoryFile *fd = (TDirectoryFile*)f->Get("vdflashmatch"); //I call the directory and then extract from it analysistree
+TFile *f = new TFile("sum_analysis.root", "read");
+TDirectoryFile *fd = (TDirectoryFile*)f->Get("oldvdflashmatch");
+//TDirectoryFile *fd = (TDirectoryFile*)f->Get("vdflashmatch"); //I call the directory and then extract from it analysistree
 fd->cd(); //move to analysis tree
 TTree *t1 = (TTree*)gDirectory->Get("FlashMatchTree");
 TTree *t3 = (TTree*)gDirectory->Get("LargestFlashTree"); //could use (TTree*)fd because now I'm inside the analysistree
@@ -32,7 +32,7 @@ t3 -> SetBranchAddress("Edep", &edep);
 t1 -> SetBranchAddress("EventID", &tEvent1);
 t1 -> SetBranchAddress("TotalPEVector", &TotalPEsVec); //the sum of this is the amount of PEs in all the flashes
 
-TH2F* hist2D = new TH2F("hist", "xs", 600, -300, 300, 500, 0, 0);
+TH2F* hist2D = new TH2F("hist", "xs", 100, 0, 0.06, 100, 0, 1);
 
 //Int_t totalID = 50;
 Int_t j1 = 0;
@@ -64,9 +64,9 @@ for (int i=0; i<nevents3; i++)
 	  //}
 	}
 cout << sumPEs << endl;
-hist2D->GetXaxis()->SetTitle("Deposited energy");
+hist2D->GetXaxis()->SetTitle("Simulated deposited energy (GeV)");
 hist2D->GetYaxis()->SetTitle("Fraction of PEs per flash");
-hist2D->SetTitle("Fraction of PEs per flash vs deposited energy");
+hist2D->SetTitle("Fraction of PEs per flash vs simulated deposited energy");
 hist2D->Draw("COLZ");
 
 }
