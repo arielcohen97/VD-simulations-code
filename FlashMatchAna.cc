@@ -1,4 +1,4 @@
-// -*- mode: c++; c-basic-offset: 2; -*-
+
 // This analyzer writes out a TTree for studying the matching
 // between flashes and events
 //
@@ -54,7 +54,8 @@
 #include "messagefacility/MessageLogger/MessageLogger.h"
 #include "art/Framework/Core/ModuleMacros.h"
 #include "canvas/Persistency/Common/FindManyP.h"
-#include "dunereco/AnaUtils/DUNEAnaEventUtils.h"
+//#include "dunereco/AnaUtils/DUNEAnaEventUtils.h"
+#include "canvas/Persistency/Common/FindMany.h"
 
 namespace opdet {
 
@@ -127,7 +128,17 @@ namespace opdet {
     std::vector< Float_t > fTruePyallpart;
     std::vector< Float_t > fTruePzallpart;
     std::vector< Float_t > fTrueEallpart;
-    std::vector< Int_t >   fTrueAllPDG;
+    std::vector< Float_t > fVx;
+    std::vector< Float_t > fVy;
+    std::vector< Float_t > fVz;
+    std::vector< Float_t > fT;
+    std::vector< Float_t > fEndx;
+    std::vector< Float_t > fEndy;
+    std::vector< Float_t > fEndz;
+    std::vector< Float_t > fEndT;
+    std::vector< Float_t > fE;
+    std::vector< Float_t > fEndE;
+    std::vector< Long_t >   fTrueAllPDG;
 
     Int_t fNFlashes;
     std::vector< Int_t >   fFlashIDVector;
@@ -148,7 +159,7 @@ namespace opdet {
     std::vector< Float_t > fDistanceVector;
     Int_t fNOpDets;
     std::vector<Int_t> fNHitOpDetVector;
-   // std::vector<Int_t> fmcparticles;
+    std::vector<Int_t> fmcparticles;
 
     Int_t    fFlashID;
     Float_t  fYCenter;
@@ -236,11 +247,22 @@ namespace opdet {
     fFlashMatchTree->Branch("Purity",                      &fPurityVector);
     fFlashMatchTree->Branch("Distance",                    &fDistanceVector);
     fFlashMatchTree->Branch("RecoXVector",                 &fRecoXVector);
-    //fFlashMatchTree->Branch("TruePyallpart",               &fTruePyallpart);
-    //fFlashMatchTree->Branch("TruePzallpart",               &fTruePzallpart);
-    //fFlashMatchTree->Branch("TrueEallpart",                &fTrueEallpart);
-    //fFlashMatchTree->Branch("TrueAllPDG",                  &fTrueAllPDG);
-    //fFlashMatchTree->Branch("MCParticles", &fmcparticles);
+    fFlashMatchTree->Branch("TruePxallpart",               &fTruePxallpart);    
+    fFlashMatchTree->Branch("TruePyallpart",               &fTruePyallpart);
+    fFlashMatchTree->Branch("TruePzallpart",               &fTruePzallpart);
+    fFlashMatchTree->Branch("TrueEallpart",                &fTrueEallpart);
+    fFlashMatchTree->Branch("TrueAllPDG",                  &fTrueAllPDG);
+    fFlashMatchTree->Branch("Vx", &fVx);
+    fFlashMatchTree->Branch("Vy", &fVy);
+    fFlashMatchTree->Branch("Vz", &fVz);
+    fFlashMatchTree->Branch("T", &fT);
+    fFlashMatchTree->Branch("E", &fE);
+    fFlashMatchTree->Branch("Endx", &fEndx);
+    fFlashMatchTree->Branch("Endy", &fEndy);
+    fFlashMatchTree->Branch("Endz", &fEndz);
+    fFlashMatchTree->Branch("EndT", &fEndT);
+    fFlashMatchTree->Branch("EndE", &fEndE);
+   // fFlashMatchTree->Branch("MCParticles", &fmcparticles);
 
 
     fLargestFlashTree = tfs->make<TTree>("LargestFlashTree","LargestFlashTree");
@@ -495,18 +517,34 @@ namespace opdet {
 
 
       // Get all the paricle including neutrino, and record its properties
-      unsigned int const nParticles = mctruth->NParticles();
-      //const std::vector<art::Ptr<simb::MCParticle> > mcparticles(dune_ana::DUNEAnaEventUtils::GetMCParticles(event, fMCParticleLabel));
-      for (unsigned int i = 0; i < nParticles; ++i) {
-	simb::MCParticle const& particle = mctruth->GetParticle(i);
+      //unsigned int const nParticles = mctruth->NParticles();
+      auto mctruth_handle = evt.getValidHandle<std::vector<simb::MCTruth>>("marley");
+      const art::FindMany<simb::MCParticle, sim::GeneratedParticleInfo> findHits(mctruth_handle, evt, "largeant");
+      std::vector<simb::MCParticle const*> particles_vec;
+      std::vector<sim::GeneratedParticleInfo const*> meta_vec;
+      findHits.get(0, particles_vec, meta_vec);
+  //    const std::vector<art::Ptr<simb::MCParticle> > mcparticles(dune_ana::DUNEAnaEventUtils::GetMCParticles(event, fMCParticleLabel));
+      for (const simb::MCParticle * p : particles_vec) {
+//	simb::MCParticle const& particle = mctruth->GetParticle(i);
+        auto particle = *p;
         fTruePxallpart    .emplace_back(particle.Px());
         fTruePyallpart    .emplace_back(particle.Py());
         fTruePzallpart    .emplace_back(particle.Pz());
         fTrueEallpart     .emplace_back(particle.E());
+        fVx               .emplace_back(particle.Vx());
+        fVy               .emplace_back(particle.Vy());
+        fVz               .emplace_back(particle.Vz());
+        fT                .emplace_back(particle.T());
+        fE                .emplace_back(particle.E());
+        fEndx             .emplace_back(particle.EndX());
+        fEndy             .emplace_back(particle.EndY());
+        fEndz             .emplace_back(particle.EndZ());
+        fEndT             .emplace_back(particle.EndT());
+        fEndE             .emplace_back(particle.EndE());  
         fTrueAllPDG       .emplace_back(particle.PdgCode());
-       // if (nParticles == mcparticles.size()){
-	//	fmcparticles	  .emplace_back(mcparticles[i]);
-	//}
+  //      if (nParticles == mcparticles.size()){
+//		fmcparticles	  .emplace_back(mcparticles[i]);
+//	}
       }
 
       // Get the PlaneID which describes the location of the true vertex
@@ -643,6 +681,8 @@ namespace opdet {
       fPurityVector     .emplace_back(fPurity);
       fDistanceVector   .emplace_back(fDistance);
       fRecoXVector      .emplace_back(fRecoX);
+     // fmcparticles      .emplace_back(1);
+      //cout << fmcparticles << endl;
 
 
       // Did we reconstruct any flashes with signal in them?
@@ -719,7 +759,18 @@ namespace opdet {
     fTruePyallpart              .clear();
     fTruePzallpart              .clear();
     fTrueEallpart               .clear();
+   // fmcparticles                .clear();
     fTrueAllPDG                 .clear();
+    fVx                         .clear();
+    fVy                         .clear();
+    fVz                         .clear();
+    fT                          .clear();
+    fE                          .clear();
+    fEndx                       .clear();
+    fEndy                       .clear();
+    fEndz                       .clear();
+    fEndT                       .clear();
+    fEndE                       .clear();  
   }
 } // namespace opdet
 
