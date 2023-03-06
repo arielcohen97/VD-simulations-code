@@ -1,0 +1,75 @@
+void neutron_events()
+
+{
+
+TFile *f = new TFile("10MeV_PDG_run.root", "read");
+TDirectoryFile *fd = (TDirectoryFile*)f->Get("vdflashmatch"); //I call the directory and then extract from it analysistree
+fd->cd(); //move to analysis tree
+TTree *t1 = (TTree*)gDirectory->Get("FlashMatchTree");
+
+Int_t tEventID;
+int nevents = t1->GetEntries();
+// int nevents = 400; //putting less events for now just to check if it works
+vector<Int_t> *tTrueAllPDG = nullptr;
+vector<Float_t> *tVx = nullptr;
+vector<Float_t> *tVy = nullptr;
+vector<Float_t> *tVz = nullptr;
+vector<Float_t> *tT = nullptr;
+vector<Float_t> *tEndx = nullptr;
+vector<Float_t> *tEndy = nullptr;
+vector<Float_t> *tEndz = nullptr;
+vector<Float_t> *tEndT = nullptr;
+Float_t *tTruex = nullptr;
+Float_t *tTruey = nullptr;
+Float_t *tTruez = nullptr;
+
+t1 -> SetBranchAddress("EventID", &tEventID);
+t1 -> SetBranchAddress ("TrueAllPDG", &tTrueAllPDG);
+t1 -> SetBranchAddress ("Vx", &tVx);
+t1 -> SetBranchAddress ("Vy", &tVy);
+t1 -> SetBranchAddress ("Vz", &tVz);
+t1 -> SetBranchAddress ("T", &tT);
+t1 -> SetBranchAddress ("Endx", &tEndx);
+t1 -> SetBranchAddress ("Endy", &tEndy);
+t1 -> SetBranchAddress ("Endz", &tEndz);
+t1 -> SetBranchAddress ("EndT", &tEndT);
+t1 -> SetBranchAddress("TrueX", &tTruex);
+t1 -> SetBranchAddress("TrueY", &tTruey);
+t1 -> SetBranchAddress("TrueZ", &tTruez);
+
+
+TGraph *gn = new TGraph();
+TGraph *gg = new TGraph();
+
+for (int i=0; i<nevents; i++){
+    t1 -> GetEntry(i);
+    for (int j = 0; j < tTrueAllPDG->size(); j++){
+//         cout << j << " " << tVx->at(j) <<  endl;
+        if (tTrueAllPDG->at(j) == 2112){
+            //cout << tVx->at(j) << endl;
+            gn -> Set(gn->GetN()+1);
+            gn -> SetPoint(gn->GetN()-1, tVx->at(j), tEndx->at(j));
+            for (int k = 0; k < tTrueAllPDG->size(); k++){
+            	if (tTrueAllPDG->at(k) == 22){
+            		cout << tVx->at(k) << " " << tEndx->at(k) << endl;
+            		gg -> Set(gg->GetN()+1);
+            		gg -> SetPoint(gg->GetN()-1, tVx->at(j), tEndx->at(j));
+        }
+//        if (tTrueAllPDG->at(j) == 22){
+//            cout << tVx->at(j) << endl;
+//            gg -> Set(gg->GetN()+1);
+//            gg -> SetPoint(gg->GetN()-1, tVx->at(j), tEndx->at(j));
+               // }
+            }
+        }
+    }
+}
+gn->GetXaxis()->SetTitle("Start x");
+gn->GetYaxis()->SetTitle("End x");
+gn->SetTitle("Generated neutron & gammas, 10 MeV nue simulation");
+gn->Draw("AP*");
+gg->SetMarkerStyle(21);
+gg->SetMarkerColor(kRed);
+gg->Draw("P SAME");
+
+}
