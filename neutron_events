@@ -19,9 +19,9 @@ vector<Float_t> *tEndx = nullptr;
 vector<Float_t> *tEndy = nullptr;
 vector<Float_t> *tEndz = nullptr;
 vector<Float_t> *tEndT = nullptr;
-Float_t *tTruex = nullptr;
-Float_t *tTruey = nullptr;
-Float_t *tTruez = nullptr;
+Float_t tTruex;// = nullptr;
+Float_t tTruey;// = nullptr;
+Float_t tTruez;// = nullptr;
 
 t1 -> SetBranchAddress("EventID", &tEventID);
 t1 -> SetBranchAddress ("TrueAllPDG", &tTrueAllPDG);
@@ -38,8 +38,10 @@ t1 -> SetBranchAddress("TrueY", &tTruey);
 t1 -> SetBranchAddress("TrueZ", &tTruez);
 
 
-TGraph *gn = new TGraph();
-TGraph *gg = new TGraph();
+// TGraph *gn = new TGraph();
+// TGraph *gg = new TGraph();
+TGraph2D *gn = new TGraph2D();
+TGraph2D *gg = new TGraph2D();
 
 for (int i=0; i<nevents; i++){
     t1 -> GetEntry(i);
@@ -47,27 +49,32 @@ for (int i=0; i<nevents; i++){
 //         cout << j << " " << tVx->at(j) <<  endl;
         if (tTrueAllPDG->at(j) == 2112){
             //cout << tVx->at(j) << endl;
+            cout << tTruex << " " << tTruey << " " << tTruez << endl;
+            gg -> Set(gn->GetN()+1);
+            gg -> SetPoint(gn->GetN()-1, tTruex, tTruey, tTruez);
             gn -> Set(gn->GetN()+1);
-            gn -> SetPoint(gn->GetN()-1, tVx->at(j), tEndx->at(j));
-            for (int k = 0; k < tTrueAllPDG->size(); k++){
-            	if (tTrueAllPDG->at(k) == 22){
-            		cout << tVx->at(k) << " " << tEndx->at(k) << endl;
-            		gg -> Set(gg->GetN()+1);
-            		gg -> SetPoint(gg->GetN()-1, tVx->at(j), tEndx->at(j));
-        }
+            gn -> SetPoint(gn->GetN()-1, tEndx->at(j), tEndy->at(j), tEndz->at(j));
+//             for (int k = 0; k < tTrueAllPDG->size(); k++){
+//             	if (tTrueAllPDG->at(k) == 22){
+//             		cout << tVx->at(k) << " " << tEndx->at(k) << endl;
+//             		gg -> Set(gg->GetN()+1);
+//             		gg -> SetPoint(gg->GetN()-1, tVx->at(j), tEndx->at(j));
+//         }
 //        if (tTrueAllPDG->at(j) == 22){
 //            cout << tVx->at(j) << endl;
 //            gg -> Set(gg->GetN()+1);
 //            gg -> SetPoint(gg->GetN()-1, tVx->at(j), tEndx->at(j));
                // }
-            }
+            //}
         }
     }
 }
-gn->GetXaxis()->SetTitle("Start x");
-gn->GetYaxis()->SetTitle("End x");
+gn->GetXaxis()->SetTitle("x");
+gn->GetYaxis()->SetTitle("y");
+gn->GetZaxis()->SetTitle("z");
 gn->SetTitle("Generated neutron & gammas, 10 MeV nue simulation");
-gn->Draw("AP*");
+gn->SetMarkerStyle(21);
+gn->Draw("P*");
 gg->SetMarkerStyle(21);
 gg->SetMarkerColor(kRed);
 gg->Draw("P SAME");
