@@ -1,0 +1,87 @@
+void neutron_histograms()
+
+{
+
+TFile *f = new TFile("10MeV_PDG_run.root", "read");
+TDirectoryFile *fd = (TDirectoryFile*)f->Get("vdflashmatch"); //I call the directory and then extract from it analysistree
+fd->cd(); //move to analysis tree
+TTree *t1 = (TTree*)gDirectory->Get("FlashMatchTree");
+
+int nevents3 = t1->GetEntries();
+Int_t tEvent1 = 0;
+Int_t tEvent3 = 0;
+vector <Float_t> *TrueAllPDG = nullptr;
+vector <Float_t> *Vx = nullptr;
+vector <Float_t> *Endx = nullptr;
+vector <Float_t> *T = nullptr;
+vector <Float_t> *EndT = nullptr;
+Int_t nflashes;
+Float_t tTruex;
+Float_t dist1;
+Float_t dist2;
+Float_t n_start_dist;
+
+t1 -> SetBranchAddress("EventID", &tEvent3);
+t1 -> SetBranchAddress("Endx", &Endx); //amount of PEs in the largest flash
+t1 -> SetBranchAddress("Vx", &Vx);
+t1 -> SetBranchAddress("NFlashes", &nflashes);
+t1 -> SetBranchAddress("EndT", &EndT);
+t1 -> SetBranchAddress("T", &T);
+t1 -> SetBranchAddress("TrueAllPDG", &TrueAllPDG);
+t1 -> SetBranchAddress("TrueX", &tTruex);
+
+TH1F* h1 = new TH1F("h1", "h1", 100, 0, 0); //position binning for now
+TH1F* h2 = new TH1F("h2", "h2", 100, 0, 0);
+// TFitResultPtr Fit(TF1 *function, Option_t *option, Option_t *goption, Axis_t xxmin, Axis_t  xxmax);
+
+// Int_t j1 = 0;
+for (int i=0; i<nevents3; i++)
+	{
+
+	t1 -> GetEntry(i);
+// 	t1 -> GetEntry(j1);
+// 	if(tEvent1 != tEvent3){
+// 	   while(tEvent1 != tEvent3){
+// 	   	j1++;
+// 	   	t1->GetEntry(j1); //this is because the amount of entries on both trees was different (ask Franciole about this), so I had to skip until they matched
+// 	   }
+// 	}
+// 	if(tEvent1 != tEvent3){
+// 	   cout << "____________________________________" << endl;
+// 	   cout << "WARNING !!!!!!! " << i << " " << tEvent1 << " " << tEvent3 << endl;
+// 	   cout << "____________________________________" << endl;
+// 	}
+	for (int j=0; j<TrueAllPDG->size() ; j++){
+		if (TrueAllPDG->at(j) == 2112){
+            //cout << EndT->at(j) << endl;
+            dist1 = 0;
+			dist1 = abs(Endx->at(j) - tTruex);
+			dist2 = abs(Endx->at(j) - Vx->at(j));
+			n_start_dist = abs(tTruex - Vx->at(j));
+ 			//if (tTruex != Vx->at(j)){
+ 			//	cout << j << " " << n_start_dist << endl;
+
+			//}
+			cout << dist1 << " " << dist2 << " " << Vx->at(j) << " " << tTruex << endl;
+			//cout << dist2 << endl;
+			h1 -> Fill(EndT->at(j)/1000);
+			//h2 -> Fill(dist2);
+        }
+
+	}
+}
+h1->GetXaxis()->SetTitle("EndT (us)");
+h1->GetYaxis()->SetTitle("Entries");
+h1->SetTitle("Neutron capture time, 15 MeV nue");
+//h1->SetFillColor(kRed);
+//h1->Fit("expo");
+h1->Draw();
+//h2->Draw("SAME");
+
+
+
+
+
+
+
+}
