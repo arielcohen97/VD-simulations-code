@@ -2,7 +2,7 @@ void neutron_histograms()
 
 {
 
-TFile *f = new TFile("10MeV_PDG_run.root", "read");
+TFile *f = new TFile("sum_energies.root", "read");
 TDirectoryFile *fd = (TDirectoryFile*)f->Get("vdflashmatch"); //I call the directory and then extract from it analysistree
 fd->cd(); //move to analysis tree
 TTree *t1 = (TTree*)gDirectory->Get("FlashMatchTree");
@@ -12,26 +12,46 @@ Int_t tEvent1 = 0;
 Int_t tEvent3 = 0;
 vector <Float_t> *TrueAllPDG = nullptr;
 vector <Float_t> *Vx = nullptr;
+vector <Float_t> *Vy = nullptr;
+vector <Float_t> *Vz = nullptr;
 vector <Float_t> *Endx = nullptr;
+vector <Float_t> *Endy = nullptr;
+vector <Float_t> *Endz = nullptr;
+vector <Float_t> *E = nullptr;
+vector <Float_t> *EndE = nullptr;
 vector <Float_t> *T = nullptr;
 vector <Float_t> *EndT = nullptr;
 Int_t nflashes;
 Float_t tTruex;
-Float_t dist1;
-Float_t dist2;
+Float_t tTruey;
+Float_t tTruez;
+Float_t dist_x;
+Float_t dist_y;
+Float_t dist_z;
+Float_t total_dist;
 Float_t n_start_dist;
+Int_t n_count;
+Float_t E_diff;
 
 t1 -> SetBranchAddress("EventID", &tEvent3);
 t1 -> SetBranchAddress("Endx", &Endx); //amount of PEs in the largest flash
+t1 -> SetBranchAddress("Endy", &Endy); //amount of PEs in the largest flash
+t1 -> SetBranchAddress("Endz", &Endz); //amount of PEs in the largest flash
+t1 -> SetBranchAddress("E", &E); //amount of PEs in the largest flash
+t1 -> SetBranchAddress("EndE", &EndE); //amount of PEs in the largest flash
 t1 -> SetBranchAddress("Vx", &Vx);
+t1 -> SetBranchAddress("Vy", &Vy);
+t1 -> SetBranchAddress("Vz", &Vz);
 t1 -> SetBranchAddress("NFlashes", &nflashes);
 t1 -> SetBranchAddress("EndT", &EndT);
 t1 -> SetBranchAddress("T", &T);
 t1 -> SetBranchAddress("TrueAllPDG", &TrueAllPDG);
 t1 -> SetBranchAddress("TrueX", &tTruex);
+t1 -> SetBranchAddress("TrueY", &tTruey);
+t1 -> SetBranchAddress("TrueZ", &tTruez);
 
-TH1F* h1 = new TH1F("h1", "h1", 100, 0, 0); //position binning for now
-TH1F* h2 = new TH1F("h2", "h2", 100, 0, 0);
+TH1F* h1 = new TH1F("h1", "h1", 100, 0, 4); //position binning for now
+// TH1F* h2 = new TH1F("h2", "h2", 100, 0, 0);
 // TFitResultPtr Fit(TF1 *function, Option_t *option, Option_t *goption, Axis_t xxmin, Axis_t  xxmax);
 
 // Int_t j1 = 0;
@@ -39,6 +59,7 @@ for (int i=0; i<nevents3; i++)
 	{
 
 	t1 -> GetEntry(i);
+	n_count = 0;
 // 	t1 -> GetEntry(j1);
 // 	if(tEvent1 != tEvent3){
 // 	   while(tEvent1 != tEvent3){
@@ -51,30 +72,52 @@ for (int i=0; i<nevents3; i++)
 // 	   cout << "WARNING !!!!!!! " << i << " " << tEvent1 << " " << tEvent3 << endl;
 // 	   cout << "____________________________________" << endl;
 // 	}
+
+	bool thereIsAN = false;
 	for (int j=0; j<TrueAllPDG->size() ; j++){
 		if (TrueAllPDG->at(j) == 2112){
             //cout << EndT->at(j) << endl;
-            dist1 = 0;
-			dist1 = abs(Endx->at(j) - tTruex);
-			dist2 = abs(Endx->at(j) - Vx->at(j));
-			n_start_dist = abs(tTruex - Vx->at(j));
- 			//if (tTruex != Vx->at(j)){
- 			//	cout << j << " " << n_start_dist << endl;
-
-			//}
-			cout << dist1 << " " << dist2 << " " << Vx->at(j) << " " << tTruex << endl;
+            n_count = j;
+			dist_x = 0;
+			dist_y = 0;
+			dist_z = 0;
+			E_diff = 0;
+			total_dist = 0;
+			dist_x = abs(Endx->at(j) - tTruex);
+			dist_y = abs(Endy->at(j) - tTruey);
+			dist_z = abs(Endz->at(j) - tTruez);
+// 			n_start_dist = abs(tTruex - Vx->at(j));
+			//cout << dist_x << " " << dist_y << " " << dist_z << " " << endl;
+			total_dist = pow(pow(dist_x, 2) + pow(dist_y, 2) + pow(dist_z, 2), 0.5);
+ 			E_diff = E->at(n_count) - EndE->at(n_count);
+// 			h1 -> Fill(total_dist);
+// 			h1 -> Fill(EndT->at(j)/1000); //the reason why I change from filling inside the loop or outside (first or last neutron of the event) is because the last one is the one that matches the neutrino while the first one is the one that ends up getting captured
+			//E_diff = E->at(n_count) - EndE->at(n_count);
+// 			h1 -> Fill(E_diff*1000);
+			thereIsAN = true;
+			break;
+ 			//cout << j << " " << n_start_dist << " " << Vx->at(j) << " " << Vy->at(j) << " " << Vz->at(j) << " " << tTruex << " " << tTruey << " " << tTruez << endl;
+// 			if (tTruex != Vx->at(j)){
+//  				cout << j << " " << n_start_dist << " " << Vx->at(j) << " " << Vy->at(j) << " " << Vz->at(j) << " " << tTruex << " " << tTruey << " " << tTruez << endl;
+//
+// 			}
+			//cout << dist1 << " " << dist2 << " " << Vx->at(j) << " " << tTruex << endl;
 			//cout << dist2 << endl;
-			h1 -> Fill(EndT->at(j)/1000);
 			//h2 -> Fill(dist2);
-        }
 
+        }
 	}
+
+	if(thereIsAN) h1 -> Fill(E_diff*1000);
+
+
+
 }
-h1->GetXaxis()->SetTitle("EndT (us)");
+h1->GetXaxis()->SetTitle("Neutron energy (MeV)");
 h1->GetYaxis()->SetTitle("Entries");
-h1->SetTitle("Neutron capture time, 15 MeV nue");
+h1->SetTitle("Neutron energy");
 //h1->SetFillColor(kRed);
-//h1->Fit("expo");
+// h1->Fit("expo", "L");
 h1->Draw();
 //h2->Draw("SAME");
 
@@ -85,3 +128,4 @@ h1->Draw();
 
 
 }
+
