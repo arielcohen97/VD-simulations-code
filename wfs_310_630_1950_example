@@ -1,0 +1,83 @@
+#define wfs_signal_plus_bckg_30MeV_310_630_1950_cxx
+#include "wfs_signal_plus_bckg_30MeV_310_630_1950.h"
+#include <TH2.h>
+#include <TStyle.h>
+#include <TCanvas.h>
+#include <TGraph.h>
+#include <vector>
+#include <iostream>
+
+void wfs_signal_plus_bckg_30MeV_310_630_1950::Loop()
+{
+  TFile *file=new TFile("waveform_hist_signal_plus_bckg_30MeV_310_630_1950.root","RECREATE");
+  std::vector<float> time, signal;
+
+  int waveindex=0;
+  int ch=0;
+  int size1=0;
+  int counter[168];
+  int fixchannel=63;//this is the channel you want to plot all the waveforms
+//   In a ROOT session, you can do:
+//      root> .L wfs_only_signal.C
+//      root> wfs_only_signal t
+//      root> t.GetEntry(12); // Fill t data members with entry number 12
+//      root> t.Show();       // Show values of entry 12
+//      root> t.Show(16);     // Read and show values of entry 16
+//      root> t.Loop();       // Loop on all entries
+//
+
+//     This is the loop skeleton where:
+//    jentry is the global entry number in the chain
+//    ientry is the entry number in the current Tree
+//  Note that the argument to GetEntry must be:
+//    jentry for TChain::GetEntry
+//    ientry for TTree::GetEntry and TBranch::GetEntry
+//
+//       To read only selected branches, Insert statements like:
+// METHOD1:
+//    fChain->SetBranchStatus("*",0);  // disable all branches
+//    fChain->SetBranchStatus("branchname",1);  // activate branchname
+// METHOD2: replace line
+//    fChain->GetEntry(jentry);       //read all branches
+//by  b_branchname->GetEntry(ientry); //read only this branch
+   if (fChain == 0) return;
+
+   Long64_t nentries = fChain->GetEntriesFast();
+
+   Long64_t nbytes = 0, nb = 0;
+  // for (Long64_t jentry=0; jentry<nentries;jentry++) {
+   for (Long64_t jentry=1; jentry<2;jentry++) {
+      Long64_t ientry = LoadTree(jentry);
+      if (ientry < 0) break;
+      nb = fChain->GetEntry(jentry);   nbytes += nb;
+     for(int i=0;i<168;i++){
+      counter[i]=0;
+    }
+      // if (Cut(ientry) < 0) continue;
+   for(int i=0; i<DAQch_ID->size(); ++i){
+      ch=DAQch_ID->at(i);
+      size1 = onda_size->at(i).at(0);
+
+	for(int j=0;j<size1;j++){
+	  time.push_back(j*16);//change to ns
+	 signal.push_back(onda_ID->at(i).at(j));
+	}
+	TGraph *gr=new TGraph(time.size(), &time[0],&signal[0]);
+    gr->SetTitle(";time [ns];ADC;");
+    if(ch==fixchannel){ //can remove the counter condition to get the desired channel (counter[ch]==0 ||)
+    gr->Write(Form("waveform_%d_%d_%d_%f",EventID,ch,waveindex,time_stamp->at(i).at(0)));
+//     time.clear(); signal.clear();
+    counter[ch]++;
+    waveindex++;
+    }
+    time.clear(); signal.clear();
+   // gr->Delete();
+  if(waveindex>200) break;
+
+}//DAQch_ID
+
+}//jentry
+
+    file->Close();
+
+}//Loop
