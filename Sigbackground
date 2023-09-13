@@ -1,0 +1,63 @@
+#define Sigbackground_cxx
+#include "Sigbackground.h"
+#include <TH2.h>
+#include <TStyle.h>
+#include <TCanvas.h>
+#include <iostream>
+#include <TFile.h>
+#include <TGraph.h>
+
+int bintime;
+int timevalue;
+double timev[10000]={0};
+double sumpe[10000]={0};
+void Sigbackground::Loop()
+{
+ 
+  TFile *f=new TFile("Sigbackground.root","RECREATE");
+
+  for(int i=0;i<10000;i++){
+    timev[i]=i*1+0.5-5000;
+
+  }
+
+
+
+
+   if (fChain == 0) return;
+
+   Long64_t nentries = fChain->GetEntriesFast();
+
+   Long64_t nbytes = 0, nb = 0;
+   for (Long64_t jentry=0; jentry<nentries;jentry++) {
+      Long64_t ientry = LoadTree(jentry);
+      if (ientry < 0) break;
+      nb = fChain->GetEntry(jentry);   nbytes += nb;
+      // if (Cut(ientry) < 0) continue;
+     for(int i=0;i<10000;i++){
+      sumpe[i]=0.0;
+      }
+
+      std::cout<<"vector size "<<OpHittime->size()<<std::endl;
+
+
+      TH2F *hist1=new TH2F("hist1","Photon Event Display;Time [micro-sec];Channel",10000,-5000,5000,170,0,160);
+
+      for(int i=0;i<OpHittime->size();i++){
+	timevalue=OpHittime->at(i);
+	bintime=int((timevalue+5000)/1);
+	sumpe[bintime]+=OpHitPE->at(i);
+	hist1->SetBinContent(bintime+1,OpHitChannel->at(i)+1,OpHitPE->at(i));
+      }
+
+      TGraph *gr=new TGraph(10000,timev,sumpe);
+      hist1->Write(Form("hist1_%d",EventID));
+      gr->Write(Form("gr_%d",EventID));
+      hist1->Delete();
+      gr->Delete();
+
+   }
+  
+   f->Close();
+ 
+}
