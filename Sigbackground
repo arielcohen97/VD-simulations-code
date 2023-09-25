@@ -51,6 +51,8 @@ void Sigbackground::Loop()
       }
 
       TGraph *gr=new TGraph(10000,timev,sumpe);
+      hist1->SetTitle("Optical channel vs time");
+      gr->SetTitle("#PEs vs cluster time; Time (us); #PEs");
       hist1->Write(Form("hist1_%d",EventID));
       gr->Write(Form("gr_%d",EventID));
       hist1->Delete();
