@@ -1,0 +1,75 @@
+void undetected_points()
+
+{
+
+TFile *f = new TFile("sum_energies.root", "read");
+TDirectoryFile *fd = (TDirectoryFile*)f->Get("vdflashmatch"); //I call the directory and then extract from it analysistree
+fd->cd(); //move to analysis tree
+TTree *t1 = (TTree*)gDirectory->Get("FlashMatchTree");
+
+
+int nevents1 = t1->GetEntries();
+//int nevents3 = t3->GetEntries();
+Int_t tEvent1 = 0;
+Int_t tEvent3 = 0;
+//vector<Float_t> *recox;
+Int_t nflashes;
+Float_t truex;
+Float_t truey;
+Float_t truez;
+Float_t trueE;
+//no_x;
+//no_y;
+//no_z;
+
+t1 -> SetBranchAddress("EventID", &tEvent1);
+t1 -> SetBranchAddress("TrueX", &truex);
+t1 -> SetBranchAddress("TrueY", &truey);
+t1 -> SetBranchAddress("TrueZ", &truez);
+t1 -> SetBranchAddress("TrueE", &trueE);
+t1 -> SetBranchAddress("NFlashes", &nflashes); 
+
+TH2F* hist2D = new TH2F("hist", "xs", 600, 0, 0, 500, 400, 2200);
+TH1F* hist1 = new TH1F("hist1", "Efficiency 5-30 MeV", 25, 0, 0);
+TH1F* hist2 = new TH1F("hist2", "Efficiency 5-30 MeV", 25, 0, 0);
+
+for (int i=0; i<nevents1; i++)
+	{
+	t1 -> GetEntry(i);
+	if (abs(truex) > 325 || abs(truey) > 737){ //|| abs(truez) > 2000){
+		continue;
+	}
+		if(nflashes != 0 && trueE < 0.03){
+			hist1 -> Fill(trueE);
+		}
+		if (trueE < 0.03){
+			hist2 -> Fill(trueE);
+
+		}
+// 			hist2D -> Fill(truex,truey);
+
+
+	}
+
+	TEfficiency *teff = new TEfficiency(*hist1, *hist2);
+
+//cout << sumPEs << endl;
+hist1->GetXaxis()->SetTitle("True energy");
+hist1->SetLineColor(kRed);
+teff->SetTitle("Detector efficiency 5-30 MeV; True energy; Efficiency");
+teff->Draw();
+// hist1->Draw("hist1");
+// hist2->Draw("hist2 SAME");
+// hist2->GetAxis()->SetTitle("True energy");
+// hist2D->GetXaxis()->SetTitle("True x (cm)");
+// hist2D->GetYaxis()->SetTitle("True y (cm)");
+// hist2D->SetTitle("Undetected events XY");
+// hist2D->Draw("COLZ");
+	
+	
+
+
+
+
+
+}
