@@ -18,6 +18,7 @@ Float_t truex;
 Float_t truey;
 Float_t truez;
 Float_t trueE;
+Float_t edep;
 Int_t low_limtx = -325;
 Int_t high_limx = -225;
 vector<Color_t> color = {kRed, kBlack, kGreen, kMagenta, kCyan, kBlue, kGray};
@@ -32,6 +33,7 @@ t1 -> SetBranchAddress("TrueX", &truex);
 t1 -> SetBranchAddress("TrueY", &truey);
 t1 -> SetBranchAddress("TrueZ", &truez);
 t1 -> SetBranchAddress("TrueE", &trueE);
+t1 -> SetBranchAddress("EdepSimE", &edep);
 t1 -> SetBranchAddress("NFlashes", &nflashes);
 
 TH2F* hist2D = new TH2F("hist", "xs", 600, 0, 0, 500, 400, 2200);
@@ -47,10 +49,10 @@ for (int j=0; j<color.size(); j++){
 		}
 		if (truex > low_limtx && truex < high_limx){ //I move 1m further and further away from the cathode
 			if(nflashes != 0 && trueE < 0.03){
-				hist1 -> Fill(trueE*1000);
+				hist1 -> Fill(edep*1000);
 			}
 			if (trueE < 0.03){
-				hist2 -> Fill(trueE*1000);
+				hist2 -> Fill(edep*1000);
 
 				}
 			}
