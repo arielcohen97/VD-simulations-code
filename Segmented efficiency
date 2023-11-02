@@ -21,7 +21,7 @@ Float_t trueE;
 Int_t low_limtx = -325;
 Int_t high_limx = -225;
 vector<Color_t> color = {kRed, kBlack, kGreen, kMagenta, kCyan, kBlue, kGray};
-vector<TString> legend = {"[-325, -225] m", "[-225, -125] m", "[-125, -25] m", "[-25, 75] m", "[75, 175] m", "[175, 275] m", "[275, 325] m"};
+vector<TString> legend = {"[-325, -225] cm", "[-225, -125] cm", "[-125, -25] cm", "[-25, 75] cm", "[75, 175] cm", "[175, 275] cm", "[275, 325] cm"};
 vector<TEfficiency*> teff;
 //no_x;
 //no_y;
@@ -47,10 +47,10 @@ for (int j=0; j<color.size(); j++){
 		}
 		if (truex > low_limtx && truex < high_limx){ //I move 1m further and further away from the cathode
 			if(nflashes != 0 && trueE < 0.03){
-				hist1 -> Fill(trueE);
+				hist1 -> Fill(trueE*1000);
 			}
 			if (trueE < 0.03){
-				hist2 -> Fill(trueE);
+				hist2 -> Fill(trueE*1000);
 
 				}
 			}
