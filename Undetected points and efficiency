@@ -41,10 +41,10 @@ for (int i=0; i<nevents1; i++)
 	}
 	if (truex > 275 && truex < 325){
 		if(nflashes != 0 && trueE < 0.03){
-			hist1 -> Fill(trueE);
+			hist1 -> Fill(trueE*1000);
 		}
 		if (trueE < 0.03){
-			hist2 -> Fill(trueE);
+			hist2 -> Fill(trueE*1000);
 
 		}
 // 			hist2D -> Fill(truex,truey);
