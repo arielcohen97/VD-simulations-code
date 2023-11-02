@@ -1,4 +1,4 @@
-void undetected_points()
+void segmented_efficiency()
 
 {
 
@@ -49,10 +49,10 @@ for (int j=0; j<color.size(); j++){
 		}
 		if (truex > low_limtx && truex < high_limx){ //I move 1m further and further away from the cathode
 			if(nflashes != 0 && trueE < 0.03){
-				hist1 -> Fill(edep*1000);
+				hist1 -> Fill(trueE*1000);
 			}
 			if (trueE < 0.03){
-				hist2 -> Fill(edep*1000);
+				hist2 -> Fill(trueE*1000);
 
 				}
 			}
@@ -72,7 +72,7 @@ for (int j=0; j<color.size(); j++){
 TCanvas *c = new TCanvas();
 auto legend1 = new TLegend();
 for(int k=teff.size()-1; k>=0; k--){
-teff[k]->SetTitle("Detector efficiency 4-30 MeV; True energy (MeV); Efficiency");
+teff[k]->SetTitle("Detector efficiency. TrueE = 4-30 MeV; True energy (MeV); Efficiency");
 teff[k]->SetLineColor(color[k]);
 legend1->AddEntry(teff[k], legend[k]);
 legend1->Draw();
