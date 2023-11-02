@@ -18,6 +18,7 @@ Float_t truex;
 Float_t truey;
 Float_t truez;
 Float_t trueE;
+Float_t edep;
 //no_x;
 //no_y;
 //no_z;
@@ -27,6 +28,7 @@ t1 -> SetBranchAddress("TrueX", &truex);
 t1 -> SetBranchAddress("TrueY", &truey);
 t1 -> SetBranchAddress("TrueZ", &truez);
 t1 -> SetBranchAddress("TrueE", &trueE);
+t1 -> SetBranchAddress("EdepSimE", &edep);
 t1 -> SetBranchAddress("NFlashes", &nflashes);
 
 TH2F* hist2D = new TH2F("hist", "xs", 600, 0, 0, 500, 400, 2200);
@@ -36,21 +38,21 @@ TH1F* hist2 = new TH1F("hist2", "Efficiency 5-30 MeV", 25, 0, 0);
 for (int i=0; i<nevents1; i++)
 	{
 	t1 -> GetEntry(i);
-	if (abs(truex) > 325 || abs(truey) > 737){ //|| abs(truez) > 2000){
+	if (abs(truex) > 325 || abs(truey) > 737 || edep > 0.015){ //|| abs(truez) > 2000){
 		continue;
 	}
-	if (truex > 275 && truex < 325){
+// 	if (truex > 275 && truex < 325){
 		if(nflashes != 0 && trueE < 0.03){
-			hist1 -> Fill(trueE*1000);
+			hist1 -> Fill(edep*1000);
 		}
 		if (trueE < 0.03){
-			hist2 -> Fill(trueE*1000);
+			hist2 -> Fill(edep*1000);
 
 		}
 // 			hist2D -> Fill(truex,truey);
 
 
-	}
+// 	}
 	}
 	TEfficiency *teff = new TEfficiency(*hist1, *hist2);
 
