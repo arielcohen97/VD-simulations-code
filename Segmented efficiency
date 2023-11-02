@@ -21,7 +21,7 @@ Float_t trueE;
 Int_t low_limtx = -325;
 Int_t high_limx = -225;
 vector<Color_t> color = {kRed, kBlack, kGreen, kMagenta, kCyan, kBlue, kGray};
-vector<TString> legend = {"[-325, -225] m", "[-225, -175] m", "[-175, -75] m", "[-75, 25] m", "[25, 125] m", "[125, 225] m", "[225, 325] m"};
+vector<TString> legend = {"[-325, -225] m", "[-225, -125] m", "[-125, -25] m", "[-25, 75] m", "[75, 175] m", "[175, 275] m", "[275, 325] m"};
 vector<TEfficiency*> teff;
 //no_x;
 //no_y;
@@ -32,7 +32,7 @@ t1 -> SetBranchAddress("TrueX", &truex);
 t1 -> SetBranchAddress("TrueY", &truey);
 t1 -> SetBranchAddress("TrueZ", &truez);
 t1 -> SetBranchAddress("TrueE", &trueE);
-t1 -> SetBranchAddress("NFlashes", &nflashes); 
+t1 -> SetBranchAddress("NFlashes", &nflashes);
 
 TH2F* hist2D = new TH2F("hist", "xs", 600, 0, 0, 500, 400, 2200);
 TH1F* hist1 = new TH1F("hist1", "Efficiency 5-30 MeV", 25, 0, 0);
@@ -70,7 +70,7 @@ for (int j=0; j<color.size(); j++){
 TCanvas *c = new TCanvas();
 auto legend1 = new TLegend();
 for(int k=teff.size()-1; k>=0; k--){
-teff[k]->SetTitle("Efficiency");
+teff[k]->SetTitle("Detector efficiency 4-30 MeV; True energy (MeV); Efficiency");
 teff[k]->SetLineColor(color[k]);
 legend1->AddEntry(teff[k], legend[k]);
 legend1->Draw();
