@@ -1,78 +1,101 @@
 void undetected_points()
 
 {
+std::vector<std::string> filenames = {
+	"20kevts_5ADC_threshold_fardet.root",
+	"20kevts_signal_fardet_10ADC_threshold.root",
+	"20k_fardet_signal_only.root"
+};
 
-TFile *f = new TFile("sum_energies.root", "read");
-TDirectoryFile *fd = (TDirectoryFile*)f->Get("vdflashmatch"); //I call the directory and then extract from it analysistree
-fd->cd(); //move to analysis tree
-TTree *t1 = (TTree*)gDirectory->Get("FlashMatchTree");
+vector<TEfficiency*> teff(filenames.size());
+vector<Color_t> color = {kRed, kBlack, kCyan};
+
+for(int iff = 0; iff<filenames.size(); iff++)
+{
+	TFile *f = new TFile(filenames.at(iff).c_str(), "read");
+	TDirectoryFile *fd = (TDirectoryFile*)f->Get("vdflashmatch"); //I call the directory and then extract from it analysistree
+	fd->cd(); //move to analysis tree
+	TTree *t1 = (TTree*)gDirectory->Get("FlashMatchTree");
 
 
-int nevents1 = t1->GetEntries();
-//int nevents3 = t3->GetEntries();
-Int_t tEvent1 = 0;
-Int_t tEvent3 = 0;
-//vector<Float_t> *recox;
-Int_t nflashes;
-Float_t truex;
-Float_t truey;
-Float_t truez;
-Float_t trueE;
-Float_t edep;
-//no_x;
-//no_y;
-//no_z;
+	int nevents1 = t1->GetEntries();
+	//int nevents3 = t3->GetEntries();
+	Int_t tEvent1 = 0;
+	Int_t tEvent3 = 0;
+	//vector<Float_t> *recox;
+	Int_t nflashes;
+	Float_t truex;
+	Float_t truey;
+	Float_t truez;
+	Float_t trueE;
+	Float_t edep;
+	Int_t counter;
+	//no_x;
+	//no_y;
+	//no_z;
 
-t1 -> SetBranchAddress("EventID", &tEvent1);
-t1 -> SetBranchAddress("TrueX", &truex);
-t1 -> SetBranchAddress("TrueY", &truey);
-t1 -> SetBranchAddress("TrueZ", &truez);
-t1 -> SetBranchAddress("TrueE", &trueE);
-t1 -> SetBranchAddress("EdepSimE", &edep);
-t1 -> SetBranchAddress("NFlashes", &nflashes);
+	t1 -> SetBranchAddress("EventID", &tEvent1);
+	t1 -> SetBranchAddress("TrueX", &truex);
+	t1 -> SetBranchAddress("TrueY", &truey);
+	t1 -> SetBranchAddress("TrueZ", &truez);
+	t1 -> SetBranchAddress("TrueE", &trueE);
+	t1 -> SetBranchAddress("EdepSimE", &edep);
+	t1 -> SetBranchAddress("NFlashes", &nflashes);
 
-TH2F* hist2D = new TH2F("hist", "xs", 600, 0, 0, 500, 400, 2200);
-TH1F* hist1 = new TH1F("hist1", "Efficiency 5-30 MeV", 25, 0, 0);
-TH1F* hist2 = new TH1F("hist2", "Efficiency 5-30 MeV", 25, 0, 0);
+	TH2F* hist2D = new TH2F("hist", "xs", 600, 0, 0, 500, 400, 2200);
+	TH1F* hist1 = new TH1F("hist1", "Efficiency 5-30 MeV", 25, 0, 30);
+	TH1F* hist2 = new TH1F("hist2", "Efficiency 5-30 MeV", 25, 0, 30);
 
-for (int i=0; i<nevents1; i++)
+	counter = 0;
+
+	for (int i=0; i<nevents1; i++)
 	{
-	t1 -> GetEntry(i);
-	if (abs(truex) > 325 || abs(truey) > 737){ //|| abs(truez) > 2000){
-		continue;
-	}
-// 	if (truex > 275 && truex < 325){
-		if(nflashes != 0 && trueE < 0.03){
-			hist1 -> Fill(trueE*1000);
+		t1 -> GetEntry(i);
+		if (abs(truex) > 325 || abs(truey) > 737){ //|| abs(truez) > 2000){
+			continue;
 		}
-		if (trueE < 0.03){
-			hist2 -> Fill(trueE*1000);
+	// 	if (truex > 225 && truex < 325 && truey > -100 && truey < 100 ){
+			if(nflashes != 0 && trueE < 0.03){
+				hist1 -> Fill(trueE*1000);
+			}
+			if (trueE < 0.03){
+				hist2 -> Fill(trueE*1000);
 
+	// 		}
+	// 			hist2D -> Fill(truex,truey);
+
+	counter++;
 		}
-// 			hist2D -> Fill(truex,truey);
+		}
+		std::cout << counter << std::endl;
+		teff[iff] = new TEfficiency(*hist1, *hist2);
 
-
-// 	}
+	//cout << sumPEs << endl;
+	// hist1->SetTitle("Undetected events per MeV");
+	// 	hist1->GetXaxis()->SetTitle("True energy (MeV)");
+	// hist1->SetLineColor(kRed);
+	// hist1->Draw();
+	teff[iff]->SetTitle("Detector efficiency far from OpDets, 5 ADC threshold. TrueE = 4-30 MeV; True energy (MeV); Efficiency");
+	teff[iff]->SetLineColor(color[iff]);
+	if (iff == 0){
+		teff[iff]->Draw();
 	}
-	TEfficiency *teff = new TEfficiency(*hist1, *hist2);
-
-//cout << sumPEs << endl;
-hist1->GetXaxis()->SetTitle("True energy");
-hist1->SetLineColor(kRed);
-teff->SetTitle("Detector efficiency. TrueE = 4-30 MeV; True energy (MeV); Efficiency");
-teff->Draw();
-// hist1->Draw("hist1");
-// hist2->Draw("hist2 SAME");
-// hist2->GetAxis()->SetTitle("True energy");
-// hist2D->GetXaxis()->SetTitle("True x (cm)");
-// hist2D->GetYaxis()->SetTitle("True y (cm)");
-// hist2D->SetTitle("Undetected events XY");
-// hist2D->Draw("COLZ");
+	else{
+		teff[iff]->Draw("SAME");
+	}
+	// hist1->Draw("hist1");
+	// hist2->Draw("hist2 SAME");
+	// hist2->GetAxis()->SetTitle("True energy");
+	// hist2D->GetXaxis()->SetTitle("True x (cm)");
+	// hist2D->GetYaxis()->SetTitle("True y (cm)");
+	// hist2D->SetTitle("Undetected events XY");
+	// hist2D->Draw("COLZ");
 
 
+	f->Close();
+	delete f;
 
-
-
+}
 
 
 }
