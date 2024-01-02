@@ -1,0 +1,80 @@
+#define RMS_calculation_cxx
+#include "RMS_calculation.h"
+#include <TH2.h>
+#include <TStyle.h>
+#include <TCanvas.h>
+#include <iostream>
+#include <TFile.h>
+#include <TGraph.h>
+#include <map>
+
+float w_mean;
+float w_sum;
+float distance_y;
+float sum;
+
+void RMS_calculation::Loop()
+
+
+
+{
+   TFile *f=new TFile("RMS_calculation.root","RECREATE");
+//   In a ROOT session, you can do:
+//      root> .L RMS_calc.C
+//      root> RMS_calc t
+//      root> t.GetEntry(12); // Fill t data members with entry number 12
+//      root> t.Show();       // Show values of entry 12
+//      root> t.Show(16);     // Read and show values of entry 16
+//      root> t.Loop();       // Loop on all entries
+//
+
+//     This is the loop skeleton where:
+//    jentry is the global entry number in the chain
+//    ientry is the entry number in the current Tree
+//  Note that the argument to GetEntry must be:
+//    jentry for TChain::GetEntry
+//    ientry for TTree::GetEntry and TBranch::GetEntry
+//
+//       To read only selected branches, Insert statements like:
+// METHOD1:
+//    fChain->SetBranchStatus("*",0);  // disable all branches
+//    fChain->SetBranchStatus("branchname",1);  // activate branchname
+// METHOD2: replace line
+//    fChain->GetEntry(jentry);       //read all branches
+//by  b_branchname->GetEntry(ientry); //read only this branch
+   if (fChain == 0) return;
+
+   Long64_t nentries = fChain->GetEntriesFast();
+
+
+   Long64_t nbytes = 0, nb = 0;
+   TH1F* hist = new TH1F("hist1","Weighted mean average Y axis", 100, 0, 0);
+   hist -> SetDirectory(0);
+   for (Long64_t jentry=0; jentry<nentries;jentry++) {
+      Long64_t ientry = LoadTree(jentry);
+      if (ientry < 0) break;
+      nb = fChain->GetEntry(jentry);   nbytes += nb;
+      // if (Cut(ientry) < 0) continue;
+      std::map<int, float> sums;
+      std::map<int, float> w_sums;
+      for (int j = 0; j<OpHitChannel_Flash->size(); j++){
+         if(sums.count(OpFlashNumber->at(j)) == 0){
+            sums[OpFlashNumber->at(j)] = 0;
+            w_sums[OpFlashNumber->at(j)] = 0;
+         }
+         w_sums[OpFlashNumber->at(j)] += Channel_Y->at(j)*OpHitPE_Flash->at(j);
+         sums[OpFlashNumber->at(j)] += OpHitPE_Flash->at(j);
+      }
+      for(const auto& [hitchannel, sum] : sums){
+         w_mean = w_sums[hitchannel]/sum;
+         std::cout << w_mean << std::endl;
+         hist -> Fill(w_mean);
+      }
+
+   }
+//    std::cout << w_mean << std::endl;
+   //std::cout << nentries << std::endl;
+   auto c = new TCanvas("hist", "Weighted mean average Y axis");
+   hist -> Draw();
+   f->Close();
+}
