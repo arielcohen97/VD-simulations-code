@@ -1,0 +1,224 @@
+#define RMS_calculation_cxx
+#include "RMS_calculation.h"
+#include <TH2.h>
+#include <TStyle.h>
+#include <TCanvas.h>
+#include <iostream>
+#include <TFile.h>
+#include <TGraph.h>
+#include <map>
+#include <TLegend.h>
+#include <string>
+
+float w_meanXR;
+float w_meanXL;
+float w_meanYC;
+float w_meanZC;
+float w_meanZR;
+float w_meanZL;
+float w_errXR;
+float w_errXL;
+float w_errYC;
+float w_errZC;
+float w_errZR;
+float w_errZL;
+float w_sum;
+float sum;
+float res_C;
+float res_R_wall;
+float res_L_wall;
+std::vector<Float_t> hit_vectorXR;
+std::vector<Float_t> hit_vectorXL;
+std::vector<Float_t> hit_vectorZC;
+std::vector<Float_t> hit_vectorZR;
+std::vector<Float_t> hit_vectorZL;
+std::vector<Float_t> weight_hit_vectorXR;
+std::vector<Float_t> weight_hit_vectorXL;
+std::vector<Float_t> weight_hit_vectorZC;
+std::vector<Float_t> weight_hit_vectorZR;
+std::vector<Float_t> weight_hit_vectorZL;
+
+
+struct Flash_info {
+      float w_sumXR = 0;
+      float w_sumXL = 0;
+      float w_sumYC = 0;
+      float w_sumZC = 0;
+      float w_sumZL = 0;
+      float w_sumZR = 0;
+      float sumC = 0;
+      float sumR = 0;
+      float sumL = 0;
+      std::vector<Float_t> hit_vectorXR;
+      std::vector<Float_t> hit_vectorXL;
+      std::vector<Float_t> hit_vectorZC;
+      std::vector<Float_t> hit_vectorZR;
+      std::vector<Float_t> hit_vectorZL;
+      std::vector<Float_t> hit_vectorYC;
+      std::vector<Float_t> weight_hit_vectorXR;
+      std::vector<Float_t> weight_hit_vectorXL;
+      std::vector<Float_t> weight_hit_vectorZC;
+      std::vector<Float_t> weight_hit_vectorZR;
+      std::vector<Float_t> weight_hit_vectorZL;
+      std::vector<Float_t> weight_hit_vectorYC;
+};
+
+float rms_calc(std::vector<float> coord, std::vector<float> weight, float mean){
+   float value = 0;
+   float sum_weights = 0;
+   for(int k=0; k<coord.size();k++){
+      value += pow((coord.at(k) - mean), 2)*weight.at(k);
+      sum_weights += weight.at(k);
+   }
+value = pow(value/sum_weights, 0.5);
+return value;
+
+}
+
+void RMS_calculation::Loop()
+
+
+
+{
+   TFile *f=new TFile("RMS_calculation.root","RECREATE");
+//   In a ROOT session, you can do:
+//      root> .L RMS_calc.C
+//      root> RMS_calc t
+//      root> t.GetEntry(12); // Fill t data members with entry number 12
+//      root> t.Show();       // Show values of entry 12
+//      root> t.Show(16);     // Read and show values of entry 16
+//      root> t.Loop();       // Loop on all entries
+//
+
+//     This is the loop skeleton where:
+//    jentry is the global entry number in the chain
+//    ientry is the entry number in the current Tree
+//  Note that the argument to GetEntry must be:
+//    jentry for TChain::GetEntry
+//    ientry for TTree::GetEntry and TBranch::GetEntry
+//
+//       To read only selected branches, Insert statements like:
+// METHOD1:
+//    fChain->SetBranchStatus("*",0);  // disable all branches
+//    fChain->SetBranchStatus("branchname",1);  // activate branchname
+// METHOD2: replace line
+//    fChain->GetEntry(jentry);       //read all branches
+//by  b_branchname->GetEntry(ientry); //read only this branch
+   if (fChain == 0) return;
+
+   Long64_t nentries = fChain->GetEntriesFast();
+
+
+   Long64_t nbytes = 0, nb = 0;
+   TH1F* hist = new TH1F("hist","Weighted mean average Y axis", 100, 0, 0);
+   TH1F* hist1 = new TH1F("hist1","New Reco vs old Reco", 100, 0, 0);
+   TH1F* hist2 = new TH1F("hist2","New Reco vs old Reco", 100, 0, 0);
+   hist -> SetDirectory(0);
+   hist1 -> SetDirectory(0);
+   for (Long64_t jentry=0; jentry<nentries;jentry++) {
+      Long64_t ientry = LoadTree(jentry);
+      if (ientry < 0) break;
+      nb = fChain->GetEntry(jentry);   nbytes += nb;
+      // if (Cut(ientry) < 0) continue;
+      std::map<int, Flash_info> flashes;
+
+      for (int j = 0; j<OpHitChannel_Flash->size(); j++){
+         if(flashes.count(OpFlashNumber->at(j)) == 0){
+            flashes[OpFlashNumber->at(j)] = Flash_info();
+         }
+         Flash_info &flash = flashes[OpFlashNumber->at(j)];
+
+
+         if (Channel_X->at(j) < -320){ //here I would add something like && abs(flash.chY - Channel_Y->at(j)) < distZ or something to account for the same distancing in Z
+//             flash.w_sumX += Channel_X->at(j)*OpHitPE_Flash->at(j);
+            flash.w_sumYC += Channel_Y->at(j)*OpHitPE_Flash->at(j);
+            flash.w_sumZC += Channel_Z->at(j)*OpHitPE_Flash->at(j);
+            flash.sumC += OpHitPE_Flash->at(j);
+            flash.hit_vectorYC.push_back(Channel_Y->at(j));
+            flash.hit_vectorZC.push_back(Channel_Z->at(j));
+            flash.weight_hit_vectorZC.push_back(OpHitPE_Flash->at(j));
+            flash.weight_hit_vectorYC.push_back(OpHitPE_Flash->at(j));
+         }
+
+         //Left wall reconstruction (x,z)
+         if (Channel_Y->at(j) < -700){
+            flash.w_sumXL += Channel_X->at(j)*OpHitPE_Flash->at(j);
+//             flash.w_sumY += Channel_Y->at(j)*OpHitPE_Flash->at(j);
+            flash.w_sumZL += Channel_Z->at(j)*OpHitPE_Flash->at(j);
+            flash.sumL += OpHitPE_Flash->at(j);
+            flash.hit_vectorXL.push_back(Channel_X->at(j));
+            flash.hit_vectorZL.push_back(Channel_Z->at(j));
+            flash.weight_hit_vectorXL.push_back(OpHitPE_Flash->at(j));
+            flash.weight_hit_vectorZL.push_back(OpHitPE_Flash->at(j));
+         }
+
+         //Right wall reconstruction (x,z)
+         if (Channel_Y->at(j) > 700){ //here I would add something like && abs(flash.chY - Channel_Y->at(j)) < distZ or something to account for the same distancing in Z
+            flash.w_sumXR += Channel_X->at(j)*OpHitPE_Flash->at(j);
+//             flash.w_sumY += Channel_Y->at(j)*OpHitPE_Flash->at(j);
+            flash.w_sumZR += Channel_Z->at(j)*OpHitPE_Flash->at(j);
+            flash.sumR += OpHitPE_Flash->at(j);
+            flash.hit_vectorXR.push_back(Channel_X->at(j));
+            flash.hit_vectorZR.push_back(Channel_Z->at(j));
+            flash.weight_hit_vectorZR.push_back(OpHitPE_Flash->at(j));
+            flash.weight_hit_vectorXR.push_back(OpHitPE_Flash->at(j));
+         }
+
+         }
+      for(const auto& [hitchannel, flash] : flashes){
+         w_meanXR = flash.w_sumXR/flash.sumR;
+         w_meanXL = flash.w_sumXL/flash.sumL;
+         w_meanYC = flash.w_sumYC/flash.sumC;
+         w_meanZC = flash.w_sumZC/flash.sumC;
+         w_meanZR = flash.w_sumZR/flash.sumR;
+         w_meanZL = flash.w_sumZL/flash.sumL;
+         w_errXR = rms_calc(flash.hit_vectorXR, flash.weight_hit_vectorXR, w_meanXR)/pow(flash.weight_hit_vectorXR.size(), 0.5);
+         w_errXL = rms_calc(flash.hit_vectorXL, flash.weight_hit_vectorXL, w_meanXL)/pow(flash.weight_hit_vectorXL.size(), 0.5);
+         w_errZC = rms_calc(flash.hit_vectorZC, flash.weight_hit_vectorZC, w_meanZC)/pow(flash.weight_hit_vectorZC.size(), 0.5);
+         w_errZR = rms_calc(flash.hit_vectorZR, flash.weight_hit_vectorZR, w_meanZR)/pow(flash.weight_hit_vectorZR.size(), 0.5);
+         w_errZL = rms_calc(flash.hit_vectorZL, flash.weight_hit_vectorZL, w_meanZL)/pow(flash.weight_hit_vectorZL.size(), 0.5);
+         w_errYC = rms_calc(flash.hit_vectorYC, flash.weight_hit_vectorYC, w_meanYC)/pow(flash.weight_hit_vectorYC.size(), 0.5);
+//          std::cout << " Right wall X: " << " " << w_meanXR << " " << w_errXR << " " << flash.hit_vectorXR.size() << std::endl;
+//          std::cout << " Left wall X: " << " " << w_meanXL << " " << w_errXL << " " << flash.hit_vectorXL.size() << std::endl;
+//          std::cout << "Cathode Y: " << w_meanYC << " " << w_errYC << " " << flash.hit_vectorYC.size() << std::endl;
+//          res_C = pow(pow(w_meanYC - TrueY, 2) + pow(w_meanZC - TrueZ, 2), 0.5);
+//          res_R_wall = pow(pow(w_meanXR - TrueX, 2) + pow(w_meanZR - TrueZ, 2), 0.5);
+//          res_L_wall = pow(pow(w_meanXL - TrueX, 2) + pow(w_meanZL - TrueZ, 2), 0.5);
+//          std::cout << w_meanXR << " " << w_meanXL << std::endl;
+//          std::cout << w_meanZR << " " << w_meanZL << std::endl;
+//          std::cout << w_meanYC << " " << w_meanZC << std::endl;
+//          hist -> Fill(res_C);
+//          hist1 -> Fill(res_R_wall);
+//          hist2 -> Fill(res_L_wall);
+//          flash.hit_vectorXR.clear();
+//          flash.hit_vectorXL.clear();
+//          flash.hit_vectorZC.clear();
+//          flash.hit_vectorZR.clear();
+//          flash.hit_vectorZL.clear();
+//          flash.hit_vectorYC.clear();
+//          flash.weight_hit_vectorXR.clear();
+//          flash.weight_hit_vectorXL.clear();
+//          flash.weight_hit_vectorZC.clear();
+//          flash.weight_hit_vectorZR.clear();
+//          flash.weight_hit_vectorZL.clear();
+//          flash.weight_hit_vectorYC.clear();
+
+      }
+
+   }
+//    std::cout << w_meanY << std::endl;
+//    auto c = new TCanvas("hist", "New Reco vs old Reco");
+//    hist1 -> Draw();
+//    hist1 -> SetLineColor(kRed);
+//    hist -> SetLineColor(kGreen);
+//    hist -> Draw("SAME");
+//    hist2 -> Draw("SAME")
+//
+//    auto legend1 = new TLegend();
+//    legend1 -> AddEntry(hist, std::to_string(hist->GetMean()).c_str()); //Form("New mean: " %5.2f, std::to_string(hist->GetMean()).c_str())
+//    legend1 -> AddEntry(hist1, std::to_string(hist1->GetMean()).c_str());
+//    legend1 -> Draw();
+//    auto gr = new TGraph(n, x, y);
+
+   f->Close();
+}
