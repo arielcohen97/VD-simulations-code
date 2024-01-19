@@ -48,6 +48,13 @@ std::vector<Float_t> weight_hit_vectorXL;
 std::vector<Float_t> weight_hit_vectorZC;
 std::vector<Float_t> weight_hit_vectorZR;
 std::vector<Float_t> weight_hit_vectorZL;
+std::vector<Float_t> RMS_vectorX;
+std::vector<Float_t> RMS_vectorY;
+std::vector<Float_t> RMS_vectorZ;
+std::vector<Float_t> TrueY_vector;
+std::vector<Float_t> TrueX_vector;
+std::vector<Float_t> TrueZ_vector;
+std::vector<Float_t> vector_newresy;
 
 
 struct Flash_info {
@@ -76,6 +83,7 @@ struct Flash_info {
       std::vector<Float_t> weight_hit_vectorZR;
       std::vector<Float_t> weight_hit_vectorZL;
       std::vector<Float_t> weight_hit_vectorYC;
+
 };
 
 float rms_calc(std::vector<float> coord, std::vector<float> weight, float mean){
@@ -154,12 +162,22 @@ void RMS_calculation::Loop()
    TH1F* hist3 = new TH1F("hist3","Resolution for 3D reconstruction", 100, 0, 0);
    TH1F* hist4 = new TH1F("hist4","Resolution for 3D reconstruction", 100, 0, 0);
    TH1F* hist5 = new TH1F("hist5","Resolution for 3D reconstruction", 100, 0, 0);
+   TH1F* hist6 = new TH1F("hist6","Error 0 points #PEs", 100, 0, 0);
+   TH2F* hist2D = new TH2F("hist2D", "True yz, erry = 0", 100, 0, 0, 100, 0, 2200);
+   TH2F* hist2D1 = new TH2F("hist2D1", "True yz, errz = 0", 100, 0, 0, 100, 0, 2200);
+   TH2F* hist2D2 = new TH2F("hist2D2", "True xy, erry = 0", 100, 0, 0, 100, 0, 2200);
+   TH2F* hist2D3 = new TH2F("hist2D3", "True xy, errz = 0", 100, 0, 0, 100, 0, 2200);
    hist -> SetDirectory(0);
    hist1 -> SetDirectory(0);
    hist2 -> SetDirectory(0);
    hist3 -> SetDirectory(0);
    hist4 -> SetDirectory(0);
    hist5 -> SetDirectory(0);
+   hist6 -> SetDirectory(0);
+   hist2D -> SetDirectory(0);
+   hist2D1 -> SetDirectory(0);
+   hist2D2 -> SetDirectory(0);
+   hist2D3 -> SetDirectory(0);
    for (Long64_t jentry=0; jentry<nentries;jentry++) {
       Long64_t ientry = LoadTree(jentry);
       if (ientry < 0) break;
@@ -216,6 +234,9 @@ void RMS_calculation::Loop()
 
          }
       for(const auto& [hitchannel, flash] : flashes){
+         if (hitchannel > 0){
+            break;
+         }
          oldw_wmeanX = flash.oldw_sumX/flash.old_sumweight;
          oldw_wmeanY = flash.oldw_sumY/flash.old_sumweight;
          oldw_wmeanZ = flash.oldw_sumZ/flash.old_sumweight;
@@ -310,14 +331,35 @@ void RMS_calculation::Loop()
                newres_x = abs(combined_x - TrueX);
                hist -> Fill(newres_x);
             }
-               if(w_errYC > 0){
+            if(w_errYC > 0){
                   newres_y = abs(w_meanYC - TrueY);
+                  vector_newresy.push_back(newres_y);
                   hist1 -> Fill(newres_y);
+                  RMS_vectorY.push_back(rms_calc(flash.hit_vectorYC, flash.weight_hit_vectorYC, w_meanYC));
+                  TrueY_vector.push_back(TrueY);
+                  TrueX_vector.push_back(TrueX);
+
                }
-               if(combined_errz > 0){
+               else{
+                  hist2D -> Fill(TrueY, TrueZ);
+                  hist2D2 -> Fill(TrueX, TrueY);
+                  hist6 -> Fill(flash.sumC + flash.sumL +flash.sumR);
+
+
+
+            }
+            if(combined_errz > 0){
                   newres_z = abs(combined_z - TrueZ);
                   hist2 -> Fill(newres_z);
+                  RMS_vectorZ.push_back(rms_calc(zmean_vec, zweight_vec, combined_z));
+                  TrueZ_vector.push_back(TrueZ);
                }
+            else{
+               hist2D1 -> Fill(TrueY, TrueZ);
+               hist2D3 -> Fill(TrueX, TrueY);
+
+            }
+
             oldres_x = abs(oldw_wmeanX - TrueX);
             oldres_y = abs(oldw_wmeanY - TrueY);
             oldres_z = abs(oldw_wmeanZ - TrueZ);
@@ -349,8 +391,14 @@ void RMS_calculation::Loop()
 //    std::cout << w_meanY << std::endl;
 
    //Plot new 2D reco
-   auto c = new TCanvas("hist", "Resolution for 2D reconstruction");
-      hist1 -> Draw();
+   auto c = new TCanvas("histogram", "True yz, erry = 0");
+   TGraph *gr4 = new TGraph(vector_newresy.size(), &vector_newresy[0], &RMS_vectorY[0]);
+   gr4 -> SetTitle("RMS Y vs Resolution Y");
+   gr4 -> GetXaxis() -> SetTitle("Resolution Y (cm)");
+   gr4 -> GetYaxis() -> SetTitle("RMS Y");
+   gr4 -> Draw("AP");
+
+      /*hist1 -> Draw();
       hist1 -> GetXaxis()->SetTitle("Resolution (cm)");
       hist1 -> SetLineColor(kRed);
       hist -> SetLineColor(kGreen);
@@ -358,16 +406,17 @@ void RMS_calculation::Loop()
       hist -> Draw("SAME");
       hist2 -> GetXaxis()->SetTitle("Resolution (cm)");
       hist2 -> Draw("SAME");
+    */  // hist2D -> Draw("COLZ");
 
-   auto legend1 = new TLegend();
-   legend1 -> AddEntry(hist, Form("New mean X:  %5.2f (cm)", hist->GetMean())); //Form("New mean: " %5.2f, std::to_string(hist->GetMean()).c_str())
-   legend1 -> AddEntry(hist1, Form("New mean Y:  %5.2f (cm)", hist1->GetMean()));
-   legend1 -> AddEntry(hist2, Form("New mean Z:  %5.2f (cm)", hist2->GetMean()));
-   legend1 -> Draw();
+//    auto legend1 = new TLegend();
+//    legend1 -> AddEntry(hist, Form("New mean X:  %5.2f (cm)", hist->GetMean())); //Form("New mean: " %5.2f, std::to_string(hist->GetMean()).c_str())
+//    legend1 -> AddEntry(hist1, Form("New mean Y:  %5.2f (cm)", hist1->GetMean()));
+//    legend1 -> AddEntry(hist2, Form("New mean Z:  %5.2f (cm)", hist2->GetMean()));
+//    legend1 -> Draw();
 
    //Plot old 3D reco
 
-//    auto h = new TCanvas("hist", "Resolution for 3D reconstruction");
+   auto h = new TCanvas("histogram3", "True yz, errz = 0");
 //       hist5 -> GetXaxis()->SetTitle("Resolution (cm)");
 //       hist5 -> Draw();
 //       hist3 -> SetLineColor(kGreen);
@@ -376,8 +425,33 @@ void RMS_calculation::Loop()
 //       hist4 -> Draw("SAME");
 //       hist4 -> GetXaxis()->SetTitle("Resolution (cm)");
 //       hist4 -> SetLineColor(kRed);
-//
-//
+//    hist2D1 -> Draw("COLZ");
+   TGraph *gr3 = new TGraph(vector_newresy.size(), &TrueY_vector[0], &vector_newresy[0]);
+   gr3 -> SetTitle("Resolution Y vs true neutrino y");
+   gr3 -> GetXaxis() -> SetTitle("True Y (cm)");
+   gr3 -> GetYaxis() -> SetTitle("Resolution Y (cm)");
+   gr3 -> Draw("AP");
+
+
+   auto h2 = new TCanvas("histogram2", "True xy, erry = 0");
+   //hist2D2 -> Draw("COLZ");
+   TGraph *gr1 = new TGraph(RMS_vectorY.size(), &TrueY_vector[0], &RMS_vectorY[0]);
+   gr1 -> SetTitle("RMS y vs true neutrino y");
+   gr1 -> GetXaxis() -> SetTitle("True Y (cm)");
+   gr1 -> GetYaxis() -> SetTitle("RMS Y");
+   gr1 -> Draw("AP");
+
+   auto h1 = new TCanvas("histogram1", "True xy, errz = 0");
+//    hist2D3 -> Draw("COLZ");
+   //hist6 -> Draw();
+   TGraph *gr2 = new TGraph(RMS_vectorY.size(), &TrueX_vector[0], &RMS_vectorY[0]);
+   gr2 -> SetTitle("RMS y vs true neutrino x");
+   gr2 -> GetXaxis() -> SetTitle("True X (cm)");
+   gr2 -> GetYaxis() -> SetTitle("RMS Y");
+   gr2 -> Draw("AP");
+
+
+
 //    auto legend1 = new TLegend();
 //    legend1 -> AddEntry(hist3, Form("New mean X:  %5.2f (cm)", hist3->GetMean())); //Form("New mean: " %5.2f, std::to_string(hist->GetMean()).c_str())
 //    legend1 -> AddEntry(hist4, Form("New mean Y:  %5.2f (cm)", hist4->GetMean()));
