@@ -10,6 +10,7 @@
 #include <TLegend.h>
 #include <string>
 #include <numeric>
+#include <TMath.h>
 
 enum Plane{
   kC,
@@ -32,6 +33,7 @@ struct Flash_info {
       float old_sumweight = 0;
       float min_dist_C = 1000000;
       float flash_time = 0;
+      float flash_PEs = 0;
       std::vector<Float_t> hit_vectorX;
       std::vector<Float_t> hit_vectorY;
       std::vector<Float_t> hit_vectorZ;
@@ -81,6 +83,26 @@ float combined_mean_calc(std::vector<float> coord, std::vector<float> weight){
 
 }
 
+float calculate_PEs(float pe_vec, float dist_vec, float sin_t){
+   float N_PEs = 0;
+   float number = 0;
+   float area = 60*60;
+   
+   number = 4*TMath::Pi()*dist_vec*pe_vec;
+   
+   number /= area*TMath::Sin(sin_t);
+   // std::cout << "Chann PEs " << pe_vec << std::endl;
+   // std::cout << "Channel position " << dist_vec << std::endl;
+   // // std::cout << "Theta " << sin_t << std::endl;
+   // std::cout << "#PEs " << number << std::endl;
+
+   
+   N_PEs = number;
+
+   return N_PEs;
+
+}
+
 //Groups the flashes in clusters with nearby Z and time means.
 std::vector<std::vector<Flash_info>> coincidence_mean(std::vector<Flash_info> flashes){
 //    return {flashes};
@@ -116,7 +138,9 @@ Plane getPlane(float chX, float chY, float chZ){
    return kNoPlane;
 }
 
-
+std::vector<float> global_PE_vec;
+std::vector<float> trueE_vec;
+std::vector<float> event_PE_vec;
 
 void RMS_calculation::Loop()
 
@@ -160,12 +184,14 @@ void RMS_calculation::Loop()
    TH1F* hist4 = new TH1F("hist4","Resolution for 3D reconstruction", 100, 0, 0);
    TH1F* hist5 = new TH1F("hist5","Resolution for 3D reconstruction", 100, 0, 0);
    TH1F* hist6 = new TH1F("hist6","Error 0 points #PEs", 100, 0, 0);
+   TH1F* hist7 = new TH1F("hist7","TrueE missed events", 100, 0, 0);
    TH2F* hist2D = new TH2F("hist2D", "True yz", 100, 0, 0, 100, 0, 2200);
    TH2F* hist2D1 = new TH2F("hist2D1", "True yz", 100, 0, 0, 100, 0, 2200);
    TH2F* hist2D2 = new TH2F("hist2D2", "True xy", 100, 0, 0, 100, 0, 2200);
    TH2F* hist2D3 = new TH2F("hist2D3", "True xy", 100, 0, 0, 100, 0, 2200);
    TH2F* hist2D4 = new TH2F("hist2D4", "Reco yz background", 100, 0, 0, 100, 0, 2200);
    TH2F* hist2D5 = new TH2F("hist2D5", "Reco xz background", 100, 0, 0, 100, 0, 2200);
+   TH2F* hist2D6 = new TH2F("hist2D", "True yz", 100, 0, 0, 100, 0, 2200);
    hist -> SetDirectory(0);
    hist1 -> SetDirectory(0);
    hist2 -> SetDirectory(0);
@@ -173,13 +199,15 @@ void RMS_calculation::Loop()
    hist4 -> SetDirectory(0);
    hist5 -> SetDirectory(0);
    hist6 -> SetDirectory(0);
+   hist7 -> SetDirectory(0);
    hist2D -> SetDirectory(0);
    hist2D1 -> SetDirectory(0);
    hist2D2 -> SetDirectory(0);
    hist2D3 -> SetDirectory(0);
    hist2D4 -> SetDirectory(0);
    hist2D5 -> SetDirectory(0);
-   for (Long64_t jentry=0; jentry<1;jentry++) {
+   hist2D6 -> SetDirectory(0);
+   for (Long64_t jentry=0; jentry<nentries;jentry++) {
       Long64_t ientry = LoadTree(jentry);
       if (ientry < 0) break;
       nb = fChain->GetEntry(jentry);   nbytes += nb;
@@ -220,6 +248,8 @@ void RMS_calculation::Loop()
       std::vector<Float_t> vector_newresy;
       std::vector<Float_t> bckg_X;
       std::vector<Float_t> bckg_Y;
+      float counter = 0;
+      float flash_mean_PEs = 0;
 
 
       std::map<int, Flash_info> flashes;
@@ -231,6 +261,7 @@ void RMS_calculation::Loop()
          Flash_info &flash = flashes[OpFlashNumber->at(j)];
 
          flash.flash_time = TimeVector->at(OpFlashNumber->at(j));
+         flash.flash_PEs = TotalPEVector->at(OpFlashNumber->at(j));
          flash.w_sumX += Channel_X->at(j)*OpHitPE_Flash->at(j);
          flash.w_sumY += Channel_Y->at(j)*OpHitPE_Flash->at(j);
          flash.w_sumZ += Channel_Z->at(j)*OpHitPE_Flash->at(j);
@@ -285,28 +316,41 @@ void RMS_calculation::Loop()
 
       for(auto const& cluster : flash_clusters){
          //Need to filter the clusters here (ex: count number of planes)
-         if(cluster.size() < 2){ //can add && #PEs > mean to not filter all 1 flashes  
-            continue;
-         }
-
+         // if(cluster.size() < 2 && cluster[0].flash_PEs < 160){ //can add && #PEs > mean to not filter all 1 flashes ( && cluster[0].flash_PEs < 160)  
+            // counter++;
+            // continue;
+         // }
+         
 
          std::vector<float> xmean_vec, ymean_vec, zmean_vec;
          std::vector<float> xweight_vec, yweight_vec, zweight_vec;
-
+         float theta_C = 0;
+         float theta_W = 0;
+         float res_2 = 0;
+         float avg_N_pes = 0;
+         // float NPEs_C = 0;
+         // float NPEs_W = 0;
+         // float avg_cathode;
+         // float avg_wall;
+         std::vector<float> npe_C;
+         std::vector<float> npe_W;
+         std::vector<float> N_pe_vec;
+      
+         
          for(Flash_info const& flash: cluster){
             if(flash.plane == kC){
                ymean_vec.push_back(flash.meanY);
                zmean_vec.push_back(flash.meanZ);
                yweight_vec.push_back(flash.w_sumY);
                zweight_vec.push_back(flash.w_sumZ);
-               hist2D5 -> Fill(flash.meanY, flash.meanZ);
+               hist2D5 -> Fill(flash.meanZ, flash.meanY);
             }
             else{
                xmean_vec.push_back(flash.meanX);
                zmean_vec.push_back(flash.meanZ);
                xweight_vec.push_back(flash.w_sumX);
                zweight_vec.push_back(flash.w_sumZ);
-               hist2D4 -> Fill(flash.meanX, flash.meanZ);
+               hist2D4 -> Fill(flash.meanZ, flash.meanX);
             }
          }
 
@@ -314,12 +358,40 @@ void RMS_calculation::Loop()
          float combined_y = combined_mean_calc(ymean_vec, yweight_vec);
          float combined_z = combined_mean_calc(zmean_vec, zweight_vec);
 
-         // if (combined_y == 0){
-         //    hist2D4 -> Fill(combined_x, combined_z);
-         // }
-         // if(combined_y != 0){
-         //    hist2D5 -> Fill(combined_y, combined_z);
-         // }
+         if (combined_x != 0 && combined_y != 0 && combined_z != 0){
+            for(Flash_info const& flash: cluster){
+               for (int k=0; k<flash.weight_hit_vector.size(); k++){
+                  res_2 = pow(flash.hit_vectorX.at(k) - combined_x, 2) + pow(flash.hit_vectorY.at(k) - combined_y, 2) + pow(flash.hit_vectorZ.at(k) - combined_z, 2);
+                  // std::cout << "Channel X " << flash.hit_vectorX.at(k) << " Channel Y " << flash.hit_vectorY.at(k) << " Channel Z " << flash.hit_vectorZ.at(k) << " #Hits " << flash.weight_hit_vector.at(k) << std::endl;
+                  if(flash.plane == kC){
+                     theta_C = TMath::ASin(abs(flash.hit_vectorX.at(k) - combined_x)/TMath::Sqrt(res_2));
+                     N_pe_vec.push_back(calculate_PEs(flash.weight_hit_vector.at(k), res_2, theta_C));
+                     npe_C.push_back(calculate_PEs(flash.weight_hit_vector.at(k), res_2, theta_C));
+                     // std::cout << "Plane " << flash.plane << std::endl;
+                  }
+               else{
+                     theta_W = TMath::ASin(abs(flash.hit_vectorY.at(k) - combined_y)/TMath::Sqrt(res_2));
+                     N_pe_vec.push_back(calculate_PEs(flash.weight_hit_vector.at(k), res_2, theta_W));
+                     npe_W.push_back(calculate_PEs(flash.weight_hit_vector.at(k), res_2, theta_W));
+                     // std::cout << "Plane " << flash.plane << std::endl;
+                  }
+                  }
+               }
+            ;
+               avg_N_pes = std::accumulate(N_pe_vec.begin(), N_pe_vec.end(), 0)/N_pe_vec.size();
+             
+               global_PE_vec.push_back(avg_N_pes);
+               trueE_vec.push_back(TrueE);
+               hist2D6 -> Fill(TrueE*1000, avg_N_pes);
+               // if (TrueE > 0.059 && TrueE < 0.072){
+               hist7->Fill(avg_N_pes);
+               // }
+               
+            }
+                        
+         
+   
+         
 
          float newres_x = 0;
          float newres_y = 0;
@@ -384,16 +456,27 @@ void RMS_calculation::Loop()
 
          }
 
-      }
+         }
+         // if (global_PE_vec.size() != 0){
+         // flash_mean_PEs = std::accumulate(global_PE_vec.begin(), global_PE_vec.end(), 0)/global_PE_vec.size();
+         // event_PE_vec.push_back(flash_mean_PEs);
+         // trueE_vec.push_back(TrueE);
+         // }
+         // if (counter == flash_clusters.size()){
+         //    hist7 -> Fill(TrueE*1000);
+         //    hist2D6 -> Fill(TrueX, TrueY);
+         // }
+      
    }
+   std::cout << global_PE_vec.size() << std::endl;
 
    //Plot new 2D reco
-   auto c = new TCanvas("histogram", "True yz, erry = 0");
-//    TGraph *gr4 = new TGraph(vector_newresy.size(), &vector_newresy[0], &RMS_vectorY[0]);
-//    gr4 -> SetTitle("RMS Y vs Resolution Y");
-//    gr4 -> GetXaxis() -> SetTitle("Resolution Y (cm)");
-//    gr4 -> GetYaxis() -> SetTitle("RMS Y");
-//    gr4 -> Draw("AP");
+   // auto c = new TCanvas("histogram", "True yz, erry = 0");
+   // TGraph *gr4 = new TGraph(trueE_vec.size(), &trueE_vec[0], &global_PE_vec[0]);
+   // gr4 -> SetTitle("Reconstructed #PEs vs true neutrino energy");
+   // gr4 -> GetXaxis() -> SetTitle("True energy (MeV)");
+   // gr4 -> GetYaxis() -> SetTitle("NPEs");
+   // gr4 -> Draw("AP");
 
       // hist2 -> GetXaxis()->SetTitle("Resolution (cm)");
       // hist2 -> SetTitle("Resolution for 2D reconstruction, largest flash");
@@ -404,10 +487,17 @@ void RMS_calculation::Loop()
       // hist -> SetLineColor(kGreen);
       // hist -> GetXaxis()->SetTitle("Resolution (cm)");
       // hist -> Draw("SAME");
-         hist2D4 -> GetXaxis() -> SetTitle("Reco X");
-         hist2D4 -> GetYaxis() -> SetTitle("Reco Z");
-         hist2D4 -> SetTitle("Reconstructed background events, XZ plane");
-         hist2D4 -> Draw("COLZ");
+      // hist7 -> SetTitle("True neutrino energy, missed events");
+      // hist7 -> GetXaxis()->SetTitle("True neutrino energy (MeV)");
+      // hist7 -> Draw();
+      //    hist2D4 -> GetXaxis() -> SetTitle("Reco Z");
+         // hist2D4 -> GetYaxis() -> SetTitle("Reco X");
+         // hist2D4 -> SetTitle("Reconstructed signal flashes, XZ plane");
+         // hist2D4 -> Draw("COLZ");
+          hist2D6 -> GetXaxis() -> SetTitle("True E (MeV)");
+          hist2D6 -> GetYaxis() -> SetTitle("#PEs");
+          hist2D6 -> SetTitle("Reconstructed PEs vs true neutrino energy");
+          hist2D6 -> Draw("COLZ");
 
    // auto legend1 = new TLegend();
    // legend1 -> AddEntry(hist, Form("New mean X:  %5.2f (cm)", hist->GetMean())); //Form("New mean: " %5.2f, std::to_string(hist->GetMean()).c_str())
@@ -417,7 +507,7 @@ void RMS_calculation::Loop()
 
    //Plot old 3D reco
 
-   auto h = new TCanvas("histogram3", "True yz, errz = 0");
+   // auto h = new TCanvas("histogram3", "True yz, errz = 0");
 //       hist5 -> GetXaxis()->SetTitle("Resolution (cm)");
 //       hist5 -> Draw();
 //       hist3 -> SetLineColor(kGreen);
@@ -432,10 +522,14 @@ void RMS_calculation::Loop()
 //    gr3 -> GetXaxis() -> SetTitle("True Y (cm)");
 //    gr3 -> GetYaxis() -> SetTitle("Resolution Y (cm)");
 //    gr3 -> Draw("AP");
-         hist2D5 -> GetXaxis() -> SetTitle("Reco Y");
-         hist2D5 -> GetYaxis() -> SetTitle("Reco Z");
-         hist2D5 -> SetTitle("Reconstructed background events, YZ plane");
-         hist2D5 -> Draw("COLZ");
+         // hist2D5 -> GetXaxis() -> SetTitle("Reco Z");
+         // hist2D5 -> GetYaxis() -> SetTitle("Reco Y");
+         // hist2D5 -> SetTitle("Reconstructed signal flashes, YZ plane");
+         // hist2D5 -> Draw("COLZ");
+      // hist7 -> SetTitle("#NPEs, TrueE: 60-70 MeV");
+      // hist7 -> GetXaxis()->SetTitle("#PEs");
+      // hist7 -> Draw();
+      
 
 
 //    auto h2 = new TCanvas("histogram2", "True xy, erry = 0");
