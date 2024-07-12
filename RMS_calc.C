@@ -38,9 +38,11 @@ struct Flash_info
    float flash_PEs = 0;
    int channel_counter = 0;
    int hit_counter = 0;
+   int flash_pair_counter = 0;
    float DPE_ratio = 0;
    float charge_calcX = 0;
    float mean_time_charge = 0;
+   float flash_adc = 0;
    std::vector<Float_t> hit_vectorX;
    std::vector<Float_t> hit_vectorY;
    std::vector<Float_t> hit_vectorZ;
@@ -220,8 +222,8 @@ std::vector<std::pair<ChargeHit, ChargeHit>> match_hits(
 }
 
 std::vector<std::string> filenames = {
-    "signal_only_charge.root"
-    //  "bckg_v35_charge.root"
+   //  "signal_only_charge.root"
+     "bckg_v35_charge.root"
 };
 
 void run_multiple(std::vector<std::string> filenames)
@@ -263,7 +265,7 @@ void run_multiple(std::vector<std::string> filenames)
          legend->AddEntry(hist_loop, Form("#Mean amount of PEs, background: 4.524e+04"));
       }
       // std::cout << ofile << std::endl;
-      hist_loop->Write(fname.c_str());
+      // hist_loop->Write(fname.c_str());
       aux++;
       f->Close();
    }
@@ -311,7 +313,7 @@ void RMS_calculation::Loop(TH1F **ret_hist)
    TH1F *hist8 = new TH1F("hist8", "X-ARAPUCA counter, cathode", 100, 0, 0);
    TH1F *hist9 = new TH1F("hist9", "X-ARAPUCA counter, wall", 100, 0, 0);
    TH1F *hist10 = new TH1F("hist10", "X-ARAPUCA counter, wall", 100, 0, 0);
-   TH1F *hist_loop = new TH1F("hist_loop", "X-ARAPUCA counter, wall", 100, 0, 0);
+   TH1F *hist_loop = new TH1F("hist_loop", "X-ARAPUCA counter, wall", 100, 0, 200000);
    *ret_hist = hist_loop;
    TH2F *hist2D = new TH2F("hist2D", "True yz", 100, 0, 0, 100, 0, 2200);
    TH2F *hist2D1 = new TH2F("hist2D1", "True yz", 100, 0, 0, 100, 0, 2200);
@@ -319,7 +321,7 @@ void RMS_calculation::Loop(TH1F **ret_hist)
    TH2F *hist2D3 = new TH2F("hist2D3", "True xy", 100, 0, 0, 100, 0, 2200);
    TH2F *hist2D4 = new TH2F("hist2D4", "Reco yz background", 100, 0, 0, 100, 0, 2200);
    TH2F *hist2D5 = new TH2F("hist2D5", "Reco xz background", 100, 0, 0, 100, 0, 2200);
-   TH2F *hist2D6 = new TH2F("hist2D", "True yz", 100, 0, 0, 100, 0, 0);
+   TH2F *hist2D6 = new TH2F("hist2D", "True yz", 70, 0, 70, 200, 0, 180000);
    hist->SetDirectory(0);
    hist1->SetDirectory(0);
    hist2->SetDirectory(0);
@@ -475,9 +477,11 @@ void RMS_calculation::Loop(TH1F **ret_hist)
 
       //Making the associations
 
-      std::vector<std::pair<ChargeHit, ChargeHit>> matched_hits = match_hits(charges[0], charges[1], 10);
+      std::vector<std::pair<ChargeHit, ChargeHit>> matched_hits = match_hits(charges[1], charges[2], 10);
 
-      // 
+      // for(const auto& mypair : matched_hits){
+      //    std::cout << mypair.first.time << " " << mypair.second.time << std::endl;
+      // }
 
       // Compute means and errors for all flashes
       for (auto &[hitchannel, flash] : flashes)
@@ -493,17 +497,20 @@ void RMS_calculation::Loop(TH1F **ret_hist)
          flash.DPE_ratio = flash.flash_PEs / flash.channel_counter;
 
          for (const auto& mypair : matched_hits){
-            // std::cout << "Plane angle 1: " << mypair.first.angle << " Plane angle 2: " << mypair.second.angle << std::endl;
-            float pair_z = (mypair.second.wireCenterY - mypair.first.wireCenterY);
-            pair_z += (TMath::Tan(PI/2. - mypair.first.angle)*mypair.first.wireCenterZ - TMath::Tan(PI/2. - mypair.second.angle)*mypair.second.wireCenterZ);
-            pair_z /= TMath::Tan(PI/2. - mypair.first.angle) - TMath::Tan(PI/2. - mypair.second.angle);
-            float pair_y = TMath::Tan(PI/2. - mypair.second.angle)*(pair_z- mypair.second.wireCenterZ) + (mypair.second.wireCenterY);
+            float pair_y = TMath::Tan(PI/2 - mypair.first.angle)*(mypair.second.wireCenterZ - mypair.first.wireCenterZ);
+            pair_y += mypair.first.wireCenterY;
+            float pair_z = mypair.second.wireCenterZ;
             // std::cout << "Pair Y: " << pair_y << " Pair Z: " << pair_z << " True Z: " <<  TrueZ << " TrueY: " << TrueY << std::endl;
             if (abs(flash.meanY - pair_y) < 100 && abs(flash.meanZ - pair_z) < 100){
+               flash.flash_pair_counter = 0;
+               if (mypair.second.charge > 100){
+                  flash.flash_adc += mypair.second.charge;
+                  flash.flash_pair_counter++; //obs: it can happen that a charge pair gets matched to two different flashes, keep an eye on that
+               }
                flash.mean_time_charge = (mypair.first.time + mypair.second.time)/2;
-               flash.charge_calcX = (abs(flash.mean_time_charge - flash.flash_time)) * vdrift;
+               flash.charge_calcX = (abs(flash.mean_time_charge - flash.flash_time)*0.5) * vdrift;
                flash.charge_recox.push_back(flash.charge_calcX);
-               hist2D6->Fill(TrueX, flash.charge_calcX);
+               // hist2D6->Fill(TrueX, flash.charge_calcX);
             }
          }
          
@@ -580,10 +587,10 @@ void RMS_calculation::Loop(TH1F **ret_hist)
          {
             for (int k = 0; k < cluster[0].weight_hit_vector.size(); k++)
             {
-               res_2 = pow(cluster[0].hit_vectorX.at(k) - (cluster[0].charge_calcX - 327), 2) + pow(cluster[0].hit_vectorY.at(k) - cluster[0].meanY, 2) + pow(cluster[0].hit_vectorZ.at(k) - cluster[0].meanZ, 2);
+               res_2 = pow(cluster[0].hit_vectorX.at(k) - (327 - cluster[0].charge_calcX), 2) + pow(cluster[0].hit_vectorY.at(k) - cluster[0].meanY, 2) + pow(cluster[0].hit_vectorZ.at(k) - cluster[0].meanZ, 2);
                if (cluster[0].plane == kC)
                {
-                  theta_C = TMath::ASin(abs(cluster[0].hit_vectorX.at(k) - (cluster[0].charge_calcX - 327)) / TMath::Sqrt(res_2));
+                  theta_C = TMath::ASin(abs(cluster[0].hit_vectorX.at(k) - (327 - cluster[0].charge_calcX)) / TMath::Sqrt(res_2));
                   N_pe_vec.push_back(calculate_PEs(cluster[0].weight_hit_vector.at(k), res_2, theta_C));
                   npe_C.push_back(calculate_PEs(cluster[0].weight_hit_vector.at(k), res_2, theta_C));
                }
@@ -593,23 +600,23 @@ void RMS_calculation::Loop(TH1F **ret_hist)
 
             global_PE_vec.push_back(avg_N_pes);
             trueE_vec.push_back(TrueE);
-            // hist2D6->Fill(TrueE * 1000, avg_N_pes);
-            if (TrueE * 1000 > 9 && TrueE * 1000 < 11)
+            hist2D6->Fill(TrueE * 1000, avg_N_pes);
+            if ((cluster[0].flash_adc)/cluster[0].flash_pair_counter > 100)
             {
-               // hist7->Fill(avg_N_pes);
+               hist7->Fill(avg_N_pes);
             }
          }
 
          if (combined_x != 0 && combined_y != 0 && combined_z != 0)
-         { // can change which coordinate I use to allow single flashes in specific planes (x for cathode and y for walls)
+         { 
             for (Flash_info const &flash : cluster)
             {
                for (int k = 0; k < flash.weight_hit_vector.size(); k++)
                {
-                  res_2 = pow(flash.hit_vectorX.at(k) - (cluster[0].charge_calcX - 327), 2) + pow(flash.hit_vectorY.at(k) - combined_y, 2) + pow(flash.hit_vectorZ.at(k) - combined_z, 2);
+                  res_2 = pow(flash.hit_vectorX.at(k) - (327 - cluster[0].charge_calcX), 2) + pow(flash.hit_vectorY.at(k) - combined_y, 2) + pow(flash.hit_vectorZ.at(k) - combined_z, 2);
                   if (flash.plane == kC)
                   {
-                     theta_C = TMath::ASin(abs(flash.hit_vectorX.at(k) - (cluster[0].charge_calcX - 327)) / TMath::Sqrt(res_2));
+                     theta_C = TMath::ASin(abs(flash.hit_vectorX.at(k) - (327 - cluster[0].charge_calcX)) / TMath::Sqrt(res_2));
                      N_pe_vec.push_back(calculate_PEs(flash.weight_hit_vector.at(k), res_2, theta_C));
                      npe_C.push_back(calculate_PEs(flash.weight_hit_vector.at(k), res_2, theta_C));
                   }
@@ -625,10 +632,10 @@ void RMS_calculation::Loop(TH1F **ret_hist)
 
             global_PE_vec.push_back(avg_N_pes);
             trueE_vec.push_back(TrueE);
-            // hist2D6->Fill(TrueE * 1000, avg_N_pes);
-            if (TrueE * 1000 > 68 && TrueE * 1000 < 70)
+            hist2D6->Fill(TrueE * 1000, avg_N_pes);
+            if ((cluster[0].flash_adc)/cluster[0].flash_pair_counter > 100)
             {
-               hist7->Fill(avg_N_pes);
+               // hist7->Fill(avg_N_pes);
             }
          }
 
@@ -735,9 +742,9 @@ void RMS_calculation::Loop(TH1F **ret_hist)
    // hist2D4 -> GetYaxis() -> SetTitle("Reco X");
    // hist2D4 -> SetTitle("Reconstructed signal flashes, XZ plane, flash + PE + PE/Ara ratio cut");
    // hist2D4 -> Draw("COLZ");
-   hist2D6->GetXaxis()->SetTitle("#True X (cm)");
-   hist2D6->GetYaxis()->SetTitle("RecoX (cm)");
-   hist2D6->SetTitle("Reconstructed drift position with charge vs true neutrino position, signal");
+   hist2D6->GetXaxis()->SetTitle("True E (MeV)");
+   hist2D6->GetYaxis()->SetTitle("#PEs");
+   hist2D6->SetTitle("Reconstructed emitted NPEs vs true energy, signal");
    hist2D6->Draw("COLZ");
    // hist8 -> SetTitle("Background, cathode");
    // hist8 -> GetXaxis()->SetTitle("Repeated hits");
@@ -754,7 +761,7 @@ void RMS_calculation::Loop(TH1F **ret_hist)
 
    // Plot old 3D reco
 
-   // auto h = new TCanvas("histogram3", "True yz, errz = 0");
+   auto h = new TCanvas("histogram3", "True yz, errz = 0");
    //       hist5 -> GetXaxis()->SetTitle("Resolution (cm)");
    //       hist5 -> Draw();
    //       hist3 -> SetLineColor(kGreen);
@@ -773,10 +780,10 @@ void RMS_calculation::Loop(TH1F **ret_hist)
    // hist2D5 -> GetYaxis() -> SetTitle("Reco Y");
    // hist2D5 -> SetTitle("Reconstructed signal flashes, YZ plane, flash + PE + PE/Ara ratio cut");
    // hist2D5 -> Draw("COLZ");
-   // hist7->Scale(scale);
-   // hist7->SetTitle("#NPEs per drift window, background");
-   // hist7->GetXaxis()->SetTitle("#PEs");
-   // hist7->Draw("HIST");
+   hist7->Scale(scale);
+   hist7->SetTitle("#NPEs per drift window, background");
+   hist7->GetXaxis()->SetTitle("#PEs");
+   hist7->Draw("HIST");
    // hist9 -> SetTitle("Background, cathode");
    // hist9 -> GetXaxis()->SetTitle("Repeated hits");
    // hist9 -> Draw();
