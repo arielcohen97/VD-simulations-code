@@ -21,8 +21,11 @@ Float_t trueE;
 Float_t edep;
 Int_t low_limtx = -325;
 Int_t high_limx = -225;
+Int_t low_limy = -750;
+Int_t high_limy = -550;
 vector<Color_t> color = {kRed, kBlack, kGreen, kMagenta, kCyan, kBlue, kGray};
-vector<TString> legend = {"[-325, -225] cm", "[-225, -125] cm", "[-125, -25] cm", "[-25, 75] cm", "[75, 175] cm", "[175, 275] cm", "[275, 325] cm"};
+// vector<TString> legend = {"[-325, -225] cm", "[-225, -125] cm", "[-125, -25] cm", "[-25, 75] cm", "[75, 175] cm", "[175, 275] cm", "[275, 325] cm"};
+vector<TString> legend_labels = {"[-750, -550] cm", "[-550, -350] cm", "[-350, -150] cm", "[-150, 50] cm", "[50, 250] cm", "[250, 450] cm", "[450, 650] cm"};
 vector<TEfficiency*> teff;
 //no_x;
 //no_y;
@@ -47,7 +50,7 @@ for (int j=0; j<color.size(); j++){
 		if (abs(truex) > 325 || abs(truey) > 737){ //|| abs(truez) > 2000){
 			continue;
 		}
-		if (truex > low_limtx && truex < high_limx){ //I move 1m further and further away from the cathode
+		if (truey > low_limtx && truey < high_limx){ //I move 1m further and further away from the cathode
 			if(nflashes != 0 && trueE < 0.03){
 				hist1 -> Fill(trueE*1000);
 			}
@@ -59,11 +62,11 @@ for (int j=0; j<color.size(); j++){
 		}
 
 		teff.push_back(new TEfficiency(*hist1, *hist2));
-		low_limtx += 100;
-		high_limx += 100;
-		if (high_limx > 325){
+		low_limy += 200;
+		high_limy += 200;
+		if (high_limy > 650){
 
-			high_limx = 325;
+			high_limy = 650;
 		}
 }
 //cout << sumPEs << endl;
@@ -72,9 +75,9 @@ for (int j=0; j<color.size(); j++){
 TCanvas *c = new TCanvas();
 auto legend1 = new TLegend();
 for(int k=teff.size()-1; k>=0; k--){
-teff[k]->SetTitle("Detector efficiency. TrueE = 4-30 MeV; True energy (MeV); Efficiency");
+teff[k]->SetTitle("Detector efficiency, y axis cut. TrueE = 4-30 MeV; True energy (MeV); Efficiency");
 teff[k]->SetLineColor(color[k]);
-legend1->AddEntry(teff[k], legend[k]);
+legend1->AddEntry(teff[k], legend_labels[k]);
 legend1->Draw();
 if(k == 6){
 teff[k]->Draw();
